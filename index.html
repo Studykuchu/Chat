@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>2-Person Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: Arial; margin: 20px; background: #f4f4f4; }
+    #chat-box {
+      height: 400px; overflow-y: auto; background: white;
+      padding: 10px; border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    input { width: 70%; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+    button { padding: 10px; border: none; border-radius: 5px; margin-left: 5px; }
+    #sendBtn { background: #2196f3; color: white; }
+    #clearBtn { background: #f44336; color: white; }
+    .msg { margin: 5px 0; }
+    .you { color: blue; }
+    .other { color: green; }
+  </style>
+</head>
+<body>
+  <h2>Chat Room</h2>
+  <div id="chat-box"></div>
+
+  <input type="text" id="msg" placeholder="Type message...">
+  <button id="sendBtn" onclick="send()">Send</button>
+  <button id="clearBtn" onclick="clearChat()">Clear Chat</button>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>

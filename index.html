@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Chat</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -13,12 +13,10 @@
       color: #222;
       transition: background 0.3s, color 0.3s;
     }
-
     .dark-mode {
       background-color: #121212;
       color: #eee;
     }
-
     .container {
       max-width: 500px;
       margin: 40px auto;
@@ -27,53 +25,57 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       overflow: hidden;
     }
-
     .dark-mode .container {
       background: #1f1f1f;
     }
-
-    header {
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #0078ff;
-      color: white;
+    #onlineUsers {
+      text-align: center;
+      font-size: 14px;
+      padding: 6px;
+      border-bottom: 1px solid #ddd;
     }
-
-    .dark-mode header {
-      background: #333;
+    #typingStatus {
+      text-align: center;
+      font-size: 13px;
+      color: gray;
+      padding: 4px;
+      min-height: 20px;
     }
-
     #chatBox {
-      height: 380px;
+      height: 400px;
       overflow-y: auto;
       padding: 10px;
     }
-
     .message {
       background: #e0e0e0;
       padding: 10px;
       margin: 8px 0;
       border-radius: 8px;
       word-wrap: break-word;
+      width: fit-content;
+      max-width: 80%;
     }
-
+    .you {
+      background: #0078ff;
+      color: white;
+      margin-left: auto;
+      text-align: right;
+    }
     .dark-mode .message {
       background: #2e2e2e;
     }
-
+    .dark-mode .you {
+      background: #005ee0;
+    }
     footer {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       padding: 10px;
       background: #fafafa;
     }
-
     .dark-mode footer {
       background: #1f1f1f;
     }
-
     input {
       flex: 1;
       padding: 10px;
@@ -81,7 +83,6 @@
       border: 1px solid #ccc;
       outline: none;
     }
-
     button {
       padding: 10px 14px;
       border: none;
@@ -90,45 +91,49 @@
       color: white;
       cursor: pointer;
     }
-
     button:hover {
       opacity: 0.9;
     }
-
-    #status {
-      font-size: 14px;
-      margin-left: 10px;
+    #toggleMode {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      font-size: 20px;
+      border: none;
+      cursor: pointer;
     }
-
-    .online { color: #00ff00; }
-    .offline { color: #ff4444; }
   </style>
 </head>
 <body>
+  <button id="toggleMode">🌙</button>
   <div class="container">
-    <header>
-      <div>
-        <h3>💬 Chat Room</h3>
-        <span id="status">Checking status...</span>
-      </div>
-      <button id="toggleMode">🌙</button>
-    </header>
-
+    <div id="onlineUsers">⚪ Checking online users...</div>
+    <div id="typingStatus"></div>
     <div id="chatBox"></div>
 
     <footer>
-      <input id="message" placeholder="Type a message...">
+      <input id="message" placeholder="Type a message..." />
       <button id="sendBtn">Send</button>
       <button id="clearBtn">Clear</button>
     </footer>
   </div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getDatabase,
+      ref,
+      push,
+      onChildAdded,
+      remove,
+      set,
+      onDisconnect,
+      onValue,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  <script>
-    // Firebase config
+    // 🔥 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
@@ -140,58 +145,97 @@
       measurementId: "G-S46Z82JYKW"
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
     const toggleBtn = document.getElementById("toggleMode");
     const messageInput = document.getElementById("message");
     const chatBox = document.getElementById("chatBox");
-    const statusText = document.getElementById("status");
+    const onlineUsersDiv = document.getElementById("onlineUsers");
+    const typingStatus = document.getElementById("typingStatus");
 
-    // Online presence
-    const userId = "user_" + Math.floor(Math.random() * 10000);
-    const userRef = db.ref("presence/" + userId);
-    userRef.set(true);
-    userRef.onDisconnect().remove();
+    // 👤 Ask username once
+    let username = localStorage.getItem("chatUsername");
+    if (!username) {
+      username = prompt("Enter your name:");
+      localStorage.setItem("chatUsername", username);
+    }
 
-    db.ref("presence").on("value", (snapshot) => {
-      const users = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
-      if (users > 1) {
-        statusText.textContent = "🟢 Friend is online";
-        statusText.className = "online";
+    // 💡 Online presence
+    const userRef = ref(db, "online/" + username);
+    set(userRef, { online: true, lastActive: serverTimestamp() });
+    onDisconnect(userRef).remove();
+
+    // 🟢 Show online users
+    onValue(ref(db, "online"), (snapshot) => {
+      const onlineUsers = snapshot.val();
+      if (onlineUsers) {
+        const names = Object.keys(onlineUsers);
+        onlineUsersDiv.innerHTML = "🟢 Online: " + names.join(", ");
       } else {
-        statusText.textContent = "🔴 Friend is offline";
-        statusText.className = "offline";
+        onlineUsersDiv.innerHTML = "⚪ No one online";
       }
     });
 
-    // Send message
+    // ✍ Typing indicator
+    const typingRef = ref(db, "typing/" + username);
+    let typingTimeout;
+
+    messageInput.addEventListener("input", () => {
+      set(typingRef, true);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        set(typingRef, false);
+      }, 1500);
+    });
+    onDisconnect(typingRef).remove();
+
+    onValue(ref(db, "typing"), (snapshot) => {
+      const typingData = snapshot.val();
+      if (!typingData) {
+        typingStatus.innerHTML = "";
+        return;
+      }
+      const others = Object.keys(typingData)
+        .filter((n) => n !== username && typingData[n] === true);
+      typingStatus.innerHTML = others.length
+        ? `${others.join(", ")} is typing...`
+        : "";
+    });
+
+    // 🚀 Send Message
     sendBtn.addEventListener("click", () => {
       const msg = messageInput.value.trim();
       if (msg) {
-        db.ref("messages").push(msg);
+        push(ref(db, "messages"), {
+          name: username,
+          text: msg,
+          time: new Date().toLocaleTimeString()
+        });
         messageInput.value = "";
+        set(typingRef, false);
       }
     });
 
-    // Receive messages
-    db.ref("messages").on("child_added", (data) => {
+    // 📩 Receive Messages
+    onChildAdded(ref(db, "messages"), (data) => {
+      const msg = data.val();
       const msgDiv = document.createElement("div");
-      msgDiv.className = "message";
-      msgDiv.textContent = data.val();
+      msgDiv.className = "message" + (msg.name === username ? " you" : "");
+      msgDiv.innerHTML = `<strong>${msg.name}:</strong> ${msg.text} <br><small>${msg.time}</small>`;
       chatBox.appendChild(msgDiv);
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // Clear chat
+    // 🧹 Clear Chat
     clearBtn.addEventListener("click", () => {
-      db.ref("messages").remove();
+      remove(ref(db, "messages"));
       chatBox.innerHTML = "";
     });
 
-    // Toggle dark/light mode
+    // 🌙 Toggle Dark Mode
     toggleBtn.addEventListener("click", () => {
       document.body.classList.toggle("dark-mode");
       toggleBtn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";

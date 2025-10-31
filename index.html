@@ -100,13 +100,8 @@
       margin-left: 10px;
     }
 
-    .online {
-      color: #00ff00;
-    }
-
-    .offline {
-      color: #ff4444;
-    }
+    .online { color: #00ff00; }
+    .offline { color: #ff4444; }
   </style>
 </head>
 <body>
@@ -128,6 +123,79 @@
     </footer>
   </div>
 
-  <script type="module" src="script.js"></script>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
+      authDomain: "chat-ab2b7.firebaseapp.com",
+      databaseURL: "https://chat-ab2b7-default-rtdb.firebaseio.com/",
+      projectId: "chat-ab2b7",
+      storageBucket: "chat-ab2b7.firebasestorage.app",
+      messagingSenderId: "978470856109",
+      appId: "1:978470856109:web:b8e64269b09ffd5225ed24",
+      measurementId: "G-S46Z82JYKW"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const toggleBtn = document.getElementById("toggleMode");
+    const messageInput = document.getElementById("message");
+    const chatBox = document.getElementById("chatBox");
+    const statusText = document.getElementById("status");
+
+    // Online presence
+    const userId = "user_" + Math.floor(Math.random() * 10000);
+    const userRef = db.ref("presence/" + userId);
+    userRef.set(true);
+    userRef.onDisconnect().remove();
+
+    db.ref("presence").on("value", (snapshot) => {
+      const users = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+      if (users > 1) {
+        statusText.textContent = "🟢 Friend is online";
+        statusText.className = "online";
+      } else {
+        statusText.textContent = "🔴 Friend is offline";
+        statusText.className = "offline";
+      }
+    });
+
+    // Send message
+    sendBtn.addEventListener("click", () => {
+      const msg = messageInput.value.trim();
+      if (msg) {
+        db.ref("messages").push(msg);
+        messageInput.value = "";
+      }
+    });
+
+    // Receive messages
+    db.ref("messages").on("child_added", (data) => {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = "message";
+      msgDiv.textContent = data.val();
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // Clear chat
+    clearBtn.addEventListener("click", () => {
+      db.ref("messages").remove();
+      chatBox.innerHTML = "";
+    });
+
+    // Toggle dark/light mode
+    toggleBtn.addEventListener("click", () => {
+      document.body.classList.toggle("dark-mode");
+      toggleBtn.textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
+    });
+  </script>
 </body>
 </html>

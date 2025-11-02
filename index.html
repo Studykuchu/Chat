@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Chat</title>
+  <link rel="manifest" href="manifest.json" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -60,9 +61,10 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js";
 
-    // 🔹 Your Firebase config
+    // 🔹 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
@@ -74,6 +76,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const messaging = getMessaging(app);
 
     // 🔹 Ask username
     let username = localStorage.getItem("username");
@@ -141,6 +144,25 @@
         }
       });
       chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // 🔹 Firebase Cloud Messaging setup
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        getToken(messaging, { vapidKey: "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA" })
+          .then((token) => {
+            console.log("🔔 FCM token:", token);
+          })
+          .catch((err) => console.error("Error getting token", err));
+      }
+    });
+
+    // 🔹 Handle notification when page is open
+    onMessage(messaging, (payload) => {
+      new Notification(payload.notification.title, {
+        body: payload.notification.body,
+        icon: "https://cdn-icons-png.flaticon.com/512/1827/1827349.png"
+      });
     });
   </script>
 </body>

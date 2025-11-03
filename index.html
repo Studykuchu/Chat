@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Chat App</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Chat</title>
   <link rel="manifest" href="/manifest.json" />
   <style>
     body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222;height:100vh;margin:0;display:flex;flex-direction:column;transition:.2s}
     .dark{background:#121212;color:#eee}
+    #onlineBox{font-size:13px;padding:8px 10px;color:gray;border-bottom:1px solid rgba(0,0,0,0.05)}
     #chatBox{flex:1;padding:10px;overflow-y:auto;display:flex;flex-direction:column}
     .message{margin:6px 0;padding:8px 10px;border-radius:8px;background:#e8e8e8;max-width:80%;align-self:flex-start}
     .self{background:#0078ff;color:#fff;align-self:flex-end}
-    .meta{font-size:11px;opacity:.6;margin-top:4px;text-align:right}
+    .meta{font-size:11px;opacity:.7;margin-top:6px;text-align:right}
+    #typing{font-size:13px;color:gray;padding:6px 10px}
     #inputBox{display:flex;padding:10px;background:#eaeaea}
     #messageInput{flex:1;padding:8px;border-radius:6px;border:1px solid #ccc}
     button{padding:8px 12px;margin-left:6px;border:none;border-radius:6px;background:#0078ff;color:#fff;cursor:pointer}
-    #typing{font-size:13px;color:gray;padding:6px 10px}
-    #onlineBox{font-size:13px;padding:6px 10px;color:gray;border-bottom:1px solid rgba(0,0,0,0.05)}
     #emergencyBtn{background:#d32f2f}
   </style>
 </head>
@@ -34,7 +34,6 @@
   </div>
 
   <script type="module">
-    // Firebase (modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
       getDatabase, ref, push, onValue, set, onDisconnect, serverTimestamp
@@ -53,6 +52,7 @@
       messagingSenderId: "978470856109",
       appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
+    // your VAPID key (you provided this earlier)
     const VAPID_KEY = "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA";
 
     // ---------- INIT ----------
@@ -61,9 +61,9 @@
     const messaging = getMessaging(app);
 
     // DOM
+    const onlineBox = document.getElementById("onlineBox");
     const chatBox = document.getElementById("chatBox");
     const typingDiv = document.getElementById("typing");
-    const onlineBox = document.getElementById("onlineBox");
     const input = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
@@ -77,27 +77,27 @@
       localStorage.setItem("username", username);
     }
 
-    // ---------- SERVICE WORKER REGISTRATION (for background push) ----------
+    // ---------- SERVICE WORKER for FCM ----------
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(reg => console.log('SW registered at', reg.scope))
-        .catch(err => console.warn('SW register error', err));
+        .then(reg => console.log('Service worker registered at', reg.scope))
+        .catch(err => console.warn('SW register failed:', err));
     }
 
-    // ---------- FCM: request permission, get token and save it ----------
-    async function setupFCM() {
+    // ---------- FCM: permission + token ----------
+    async function setupFCM(){
       try {
         const perm = await Notification.requestPermission();
         if (perm !== 'granted') {
-          console.warn('Notifications permission not granted');
+          console.warn('Notifications not granted');
           return;
         }
-        // register SW, then getToken using the registered SW (some browsers require it)
-        const swReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: swReg });
+        // get registration (must exist) and use it when getting token
+        const reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
         console.log('FCM token:', token);
         if (token) {
-          // save token to DB so Cloud Function or admin can send to it later
+          // store token under username so Cloud Function or admin can notify this device
           await set(ref(db, 'fcmTokens/' + username), { token: token, ts: Date.now() });
         }
       } catch (e) {
@@ -106,53 +106,51 @@
     }
     setupFCM();
 
-    // handle messages while page is open
-    onMessage(messaging, (payload) => {
-      console.log('Foreground FCM message', payload);
+    // foreground FCM messages
+    onMessage(messaging, payload => {
       const n = payload.notification || {};
       if (Notification.permission === 'granted') {
         new Notification(n.title || 'New message', { body: n.body || '', icon: n.icon || undefined });
       }
     });
 
-    // ---------- PRESENCE: set online + onDisconnect -> lastSeen ----------
+    // ---------- PRESENCE: online / last seen ----------
     const presenceRef = ref(db, 'presence/' + username);
     async function setOnline() {
-      // set online true + server timestamp for lastActive
       await set(presenceRef, { online: true, lastActive: serverTimestamp() });
       onDisconnect(presenceRef).set({ online: false, lastActive: serverTimestamp() });
     }
     setOnline();
 
-    // show presence list + last seen
     onValue(ref(db, 'presence'), snap => {
       const data = snap.val() || {};
-      // build display: online names and lastSeen for offline users
-      const nowList = [], lastSeenLines = [];
-      for (const [name, info] of Object.entries(data)) {
-        if (info && info.online) nowList.push(name);
+      const onlineNames = [], lastSeenLines = [];
+      for (const name in data) {
+        const info = data[name];
+        if (info && info.online) onlineNames.push(name);
         else if (info && info.lastActive) {
-          // convert server timestamp to readable
-          const t = info.lastActive;
-          // serverTimestamp in DB is numeric ms; if not numeric, skip
-          const last = Number(t) || 0;
-          const ago = last ? timeAgo(last) : 'some time';
+          const t = Number(info.lastActive) || 0;
+          const ago = t ? timeAgo(t) : 'some time';
           lastSeenLines.push(`${name}: last seen ${ago}`);
         }
       }
-      if (nowList.length) onlineBox.textContent = 'Online: ' + nowList.join(', ');
+      if (onlineNames.length) onlineBox.textContent = '🟢 Online: ' + onlineNames.join(', ');
       else if (lastSeenLines.length) onlineBox.textContent = lastSeenLines.join(' • ');
       else onlineBox.textContent = 'No one online';
     });
 
-    // helper timeAgo
-    function timeAgo(ts) {
-      const diff = Math.floor((Date.now() - ts) / 1000);
-      if (diff < 60) return `${diff}s ago`;
-      if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-      return `${Math.floor(diff/86400)}d ago`;
+    function timeAgo(ts){
+      const s = Math.floor((Date.now() - ts)/1000);
+      if (s < 60) return `${s}s ago`;
+      if (s < 3600) return `${Math.floor(s/60)}m ago`;
+      if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+      return `${Math.floor(s/86400)}d ago`;
     }
+
+    // periodically refresh lastActive so presence stays fresh
+    setInterval(()=> {
+      set(ref(db, 'presence/' + username), { online: true, lastActive: serverTimestamp() }).catch(()=>{});
+    }, 30000);
 
     // ---------- TYPING ----------
     let typingTimeout;
@@ -167,25 +165,37 @@
       typingDiv.textContent = others.length ? `${others.join(', ')} is typing...` : '';
     });
 
-    // ---------- MESSAGES (send + receive) ----------
+    // ---------- SEND MESSAGES (no send sound) ----------
     sendBtn.addEventListener('click', () => {
       const text = input.value.trim();
       if (!text) return;
-      push(ref(db, 'messages'), { sender: username, text, ts: Date.now(), time: new Date().toLocaleTimeString() });
+      push(ref(db, 'messages'), {
+        sender: username,
+        text,
+        ts: Date.now(),
+        time: new Date().toLocaleTimeString()
+      });
       input.value = '';
+      // stop typing flag
+      set(ref(db, 'typing/' + username), false).catch(()=>{});
     });
 
-    // local clear feature (never show older than saved timestamp)
+    // ---------- LOCAL CLEAR (never show past messages again on this device) ----------
     clearBtn.addEventListener('click', () => {
       if (!confirm('Clear chat locally? This will hide past messages on this device.')) return;
       localStorage.setItem('chatClearedAt', Date.now());
       chatBox.innerHTML = '';
     });
 
-    // emergency button:
+    // ---------- EMERGENCY BUTTON ----------
     emergencyBtn.addEventListener('click', () => {
-      // notify others
-      push(ref(db, 'messages'), { sender: '⚠️ System', text: `${username} pressed EMERGENCY`, ts: Date.now(), time: new Date().toLocaleTimeString() });
+      // inform others via DB
+      push(ref(db, 'messages'), {
+        sender: '⚠️ System',
+        text: `${username} pressed the EMERGENCY button!`,
+        ts: Date.now(),
+        time: new Date().toLocaleTimeString()
+      });
       // clear locally
       localStorage.setItem('chatClearedAt', Date.now());
       chatBox.innerHTML = '';
@@ -193,13 +203,18 @@
       window.open('https://pw.live', '_blank');
     });
 
-    // render messages (honor local clear)
+    // ---------- TOGGLE DARK MODE ----------
+    toggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      toggleBtn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+    });
+
+    // ---------- RECEIVE & RENDER MESSAGES (honor local clear) ----------
     onValue(ref(db, 'messages'), snap => {
       const clearedAt = Number(localStorage.getItem('chatClearedAt') || 0);
       chatBox.innerHTML = '';
       const data = snap.val() || {};
-      // convert to sorted list
-      const list = Object.keys(data).map(k => data[k]).sort((a,b) => (a.ts||0) - (b.ts||0));
+      const list = Object.keys(data).map(k => data[k]).sort((a,b)=> (a.ts||0)-(b.ts||0));
       for (const msg of list) {
         if ((msg.ts || 0) <= clearedAt) continue;
         const el = document.createElement('div');
@@ -210,43 +225,23 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // small helper to escape HTML
-    function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    // small escape
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-    // ---------- small sound + title flash while page open ----------
-    const ding = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-    let originalTitle = document.title;
-    let flashHandle = null;
-    // watch for child additions to play sound (simple approach: poll DB changes via onValue above)
-    // We'll play sound when onValue updates and there is at least one child (works fine for 2-person)
-    let lastRenderedCount = 0;
+    // ---------- Optional: small visual notice when new message arrives (no sound) ----------
+    // (left intentionally minimal — notifications come from FCM in background)
+    let lastCount = 0;
     onValue(ref(db, 'messages'), snap => {
       const data = snap.val() || {};
       const count = Object.keys(data).length;
-      if (count > lastRenderedCount) {
-        // new message arrived
-        try { ding.play(); } catch(e) {}
-        if (!document.hasFocus()) startTitleFlash();
+      if (count > lastCount && !document.hasFocus()) {
+        // briefly flash title
+        const original = document.title;
+        document.title = '🔔 New message';
+        setTimeout(()=> document.title = original, 2500);
       }
-      lastRenderedCount = count;
+      lastCount = count;
     });
-
-    function startTitleFlash(){
-      if (flashHandle) return;
-      let show = true;
-      flashHandle = setInterval(()=> {
-        document.title = show ? '🔔 New message' : originalTitle;
-        show = !show;
-      }, 1000);
-      setTimeout(()=> { stopTitleFlash(); }, 8000);
-    }
-    function stopTitleFlash(){ if (flashHandle) { clearInterval(flashHandle); flashHandle = null; document.title = originalTitle; } }
-    window.addEventListener('focus', stopTitleFlash);
-
-    // ---------- helper: ensure presence is updated periodically (keep lastActive fresh) ----------
-    setInterval(()=> {
-      set(ref(db, 'presence/' + username), { online: true, lastActive: serverTimestamp() }).catch(()=>{});
-    }, 30000);
 
     // ---------- end ----------
   </script>

@@ -1,6 +1,6 @@
-// firebase-messaging-sw.js
-importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js");
-importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js");
+// firebase-messaging-sw.js (put at repo root)
+importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging-compat.js");
 
 firebase.initializeApp({
   apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
@@ -13,13 +13,15 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log("[firebase-messaging-sw.js] Received background message ", payload);
-  const notificationTitle = payload.notification.title || "New Message";
-  const notificationOptions = {
-    body: payload.notification.body || "Someone sent a message.",
-    icon: "/icon.png"
+// background message handler
+messaging.onBackgroundMessage(function(payload) {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  const notification = payload.notification || {};
+  const title = notification.title || 'New message';
+  const options = {
+    body: notification.body || '',
+    icon: notification.icon || '/icon.png',
+    data: payload.data || {}
   };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, options);
 });

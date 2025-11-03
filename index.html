@@ -1,163 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Hidden Chat Calculator</title>
-<style>
-  body {
-    margin: 0;
-    font-family: "Poppins", sans-serif;
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hidden Chat Calculator</title>
+  <style>
+    body { font-family: Arial; background: #111; color: #fff; text-align: center; margin: 0; }
+    #calc, #chat { width: 320px; margin: 40px auto; background: #222; border-radius: 8px; padding: 10px; }
+    #display { background: #000; color: #0f0; padding: 15px; font-size: 1.5em; text-align: right; border-radius: 5px; margin-bottom: 10px; }
+    .btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    button { padding: 15px; font-size: 1.2em; background: #333; color: #fff; border: none; border-radius: 5px; }
+    button:hover { background: #555; }
 
-  /* Calculator */
-  #calc {
-    width: 320px;
-    background: #1e1e1e;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 0 20px #0008;
-  }
-
-  #display {
-    background: #000;
-    color: #0f0;
-    font-size: 2em;
-    padding: 20px;
-    text-align: right;
-    border-bottom: 2px solid #333;
-  }
-
-  .btns {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  button {
-    font-size: 1.2em;
-    padding: 20px;
-    border: 1px solid #333;
-    background: #222;
-    color: #fff;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-
-  button:hover {
-    background: #444;
-  }
-
-  #equals {
-    background: #0a84ff;
-    color: white;
-  }
-
-  /* Chat */
-  #chat {
-    display: none;
-    flex-direction: column;
-    width: 360px;
-    height: 520px;
-    background: #101820;
-    border-radius: 12px;
-    box-shadow: 0 0 25px #000a;
-    overflow: hidden;
-  }
-
-  #topbar {
-    background: #1f2a37;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  #status {
-    font-size: 0.9em;
-    color: #8fbcff;
-  }
-
-  #emergency {
-    background: #ff3b30;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  #messages {
-    flex: 1;
-    padding: 10px;
-    overflow-y: auto;
-    background: #0d1117;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .msg {
-    max-width: 80%;
-    padding: 10px;
-    border-radius: 10px;
-    line-height: 1.3em;
-    font-size: 0.9em;
-  }
-
-  .mine {
-    background: #005eff;
-    color: #fff;
-    align-self: flex-end;
-  }
-
-  .theirs {
-    background: #333;
-    color: #eee;
-    align-self: flex-start;
-  }
-
-  .msg small {
-    display: block;
-    color: #ccc;
-    font-size: 0.7em;
-    margin-top: 4px;
-  }
-
-  #inputRow {
-    display: flex;
-    border-top: 1px solid #222;
-  }
-
-  #msgInput {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    outline: none;
-    background: #161b22;
-    color: #fff;
-    font-size: 1em;
-  }
-
-  #sendBtn {
-    background: #0a84ff;
-    border: none;
-    padding: 10px 16px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-  }
-
-  #sendBtn:hover {
-    background: #0066d6;
-  }
-</style>
+    #chat { display: none; height: 500px; display: flex; flex-direction: column; }
+    #messages { flex: 1; overflow-y: auto; background: #000; padding: 10px; text-align: left; }
+    .msg { background: #333; padding: 6px; border-radius: 5px; margin: 4px 0; }
+    .mine { background: #065535; }
+    #inputRow { display: flex; margin-top: 5px; }
+    #msgInput { flex: 1; padding: 10px; background: #111; color: #fff; border: none; }
+    #sendBtn { background: #06f; border: none; color: #fff; padding: 10px 15px; }
+    #status { font-size: 0.9em; margin-bottom: 5px; }
+    #emergency { background: red; color: #fff; border: none; padding: 5px 10px; margin-top: 5px; border-radius: 4px; }
+  </style>
 </head>
 <body>
 
@@ -174,15 +38,13 @@
 
 <!-- Chat -->
 <div id="chat">
-  <div id="topbar">
-    <span id="status">Connecting...</span>
-    <button id="emergency">Emergency</button>
-  </div>
+  <div id="status">Connecting...</div>
   <div id="messages"></div>
   <div id="inputRow">
-    <input id="msgInput" placeholder="Type a message..." />
+    <input id="msgInput" placeholder="Type message...">
     <button id="sendBtn">Send</button>
   </div>
+  <button id="emergency">Emergency</button>
 </div>
 
 <!-- Firebase -->
@@ -205,93 +67,91 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
+const calc = document.getElementById("calc");
+const chat = document.getElementById("chat");
 const display = document.getElementById("display");
 const buttons = document.querySelectorAll(".btns button");
-const calcDiv = document.getElementById("calc");
-const chatDiv = document.getElementById("chat");
-const messagesDiv = document.getElementById("messages");
 const msgInput = document.getElementById("msgInput");
 const sendBtn = document.getElementById("sendBtn");
-const statusSpan = document.getElementById("status");
-const emergencyBtn = document.getElementById("emergency");
+const messagesDiv = document.getElementById("messages");
+const statusDiv = document.getElementById("status");
+const emergency = document.getElementById("emergency");
 
 let expr = "";
 let uid = null;
 let name = localStorage.getItem("chat_name") || prompt("Enter your name:") || "Anonymous";
 localStorage.setItem("chat_name", name);
-
 const secret = "0304";
 
+// Calculator
 buttons.forEach(b => {
   b.onclick = () => {
-    const val = b.textContent;
-    if (val === "=") {
-      if (expr === secret) openChat();
-      else {
+    const v = b.textContent;
+    if (v === "=") {
+      if (expr === secret) {
+        openChat();
+      } else {
         try { display.textContent = eval(expr) } catch { display.textContent = "Err" }
         expr = "";
       }
     } else {
-      expr += val;
+      expr += v;
       display.textContent = expr;
     }
   };
 });
 
-auth.signInAnonymously().catch(console.error);
-auth.onAuthStateChanged(u => {
-  if (!u) return;
-  uid = u.uid;
-  const presRef = db.ref("presence/" + uid);
-  presRef.set({ name, online: true, lastSeen: Date.now() });
-  presRef.onDisconnect().set({ name, online: false, lastSeen: Date.now() });
+// Chat
+auth.signInAnonymously().then(u => {
+  uid = u.user.uid;
+  const presenceRef = db.ref("presence/" + uid);
+  presenceRef.set({ name, online: true, lastSeen: Date.now() });
+  presenceRef.onDisconnect().set({ name, online: false, lastSeen: Date.now() });
 
   db.ref("presence").on("value", snap => {
-    const val = snap.val() || {};
-    const others = Object.values(val).filter(p => p.online && p.name !== name);
-    statusSpan.textContent = others.length ? "Online: " + others.map(o => o.name).join(", ") : "No one online";
+    const data = snap.val() || {};
+    const online = Object.values(data).filter(p => p.online && p.name !== name).map(p => p.name).join(", ");
+    statusDiv.textContent = online ? "Online: " + online : "No one online";
   });
 
-  db.ref("messages").on("child_added", snap => addMsg(snap.val()));
+  db.ref("messages").on("child_added", s => {
+    const m = s.val();
+    const div = document.createElement("div");
+    div.className = "msg " + (m.uid === uid ? "mine" : "");
+    div.innerHTML = `<b>${m.name}</b>: ${m.text}<br><small>${new Date(m.time).toLocaleTimeString()}</small>`;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  });
 });
 
-function addMsg(m) {
-  const div = document.createElement("div");
-  div.className = "msg " + (m.uid === uid ? "mine" : "theirs");
-  div.innerHTML = `<b>${m.name}</b><br>${m.text}<small>${new Date(m.time).toLocaleTimeString()}</small>`;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
+sendBtn.onclick = sendMessage;
+msgInput.onkeydown = e => { if (e.key === "Enter") sendMessage(); };
 
-function sendMsg() {
+function sendMessage() {
   const text = msgInput.value.trim();
   if (!text) return;
   db.ref("messages").push({ name, uid, text, time: Date.now() });
   msgInput.value = "";
 }
-sendBtn.onclick = sendMsg;
-msgInput.onkeydown = e => { if (e.key === "Enter") sendMsg(); };
 
-emergencyBtn.onclick = () => {
-  chatDiv.style.display = "none";
-  calcDiv.style.display = "block";
+emergency.onclick = () => {
+  chat.style.display = "none";
+  calc.style.display = "block";
   messagesDiv.innerHTML = "";
   display.textContent = "0";
 };
 
 function openChat() {
-  calcDiv.style.display = "none";
-  chatDiv.style.display = "flex";
+  calc.style.display = "none";
+  chat.style.display = "flex";
 }
 
+// always go back to calculator on reload
 window.addEventListener("load", () => {
-  chatDiv.style.display = "none";
-  calcDiv.style.display = "block";
-});
-window.addEventListener("popstate", () => {
-  chatDiv.style.display = "none";
-  calcDiv.style.display = "block";
+  chat.style.display = "none";
+  calc.style.display = "block";
 });
 </script>
+
 </body>
 </html>

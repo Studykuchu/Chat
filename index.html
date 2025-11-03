@@ -1,157 +1,170 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hidden Chat Calculator</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Secret Chat</title>
   <style>
-    body { font-family: Arial; background: #111; color: #fff; text-align: center; margin: 0; }
-    #calc, #chat { width: 320px; margin: 40px auto; background: #222; border-radius: 8px; padding: 10px; }
-    #display { background: #000; color: #0f0; padding: 15px; font-size: 1.5em; text-align: right; border-radius: 5px; margin-bottom: 10px; }
-    .btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-    button { padding: 15px; font-size: 1.2em; background: #333; color: #fff; border: none; border-radius: 5px; }
-    button:hover { background: #555; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; height: 100vh; display: flex; flex-direction: column; }
+    #chatContainer { flex: 1; display: flex; flex-direction: column; }
+    #onlineBox { background: #0078ff; color: white; padding: 8px; font-size: 14px; }
+    #chatBox { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; }
+    .message { margin: 6px 0; padding: 8px 10px; border-radius: 10px; background: #e8e8e8; max-width: 70%; align-self: flex-start; }
+    .self { background: #0078ff; color: white; align-self: flex-end; }
+    .meta { font-size: 11px; text-align: right; opacity: 0.7; }
+    #inputBox { display: flex; padding: 10px; background: #eee; }
+    #messageInput { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+    button { margin-left: 6px; padding: 8px 10px; border: none; border-radius: 6px; background: #0078ff; color: white; cursor: pointer; }
+    #emergencyBtn { background: #d32f2f; }
+    #typing { font-size: 13px; color: gray; padding-left: 10px; margin-bottom: 5px; }
 
-    #chat { display: none; height: 500px; display: flex; flex-direction: column; }
-    #messages { flex: 1; overflow-y: auto; background: #000; padding: 10px; text-align: left; }
-    .msg { background: #333; padding: 6px; border-radius: 5px; margin: 4px 0; }
-    .mine { background: #065535; }
-    #inputRow { display: flex; margin-top: 5px; }
-    #msgInput { flex: 1; padding: 10px; background: #111; color: #fff; border: none; }
-    #sendBtn { background: #06f; border: none; color: #fff; padding: 10px 15px; }
-    #status { font-size: 0.9em; margin-bottom: 5px; }
-    #emergency { background: red; color: #fff; border: none; padding: 5px 10px; margin-top: 5px; border-radius: 4px; }
+    /* Calculator hidden view */
+    #calculator { display: none; flex-direction: column; padding: 20px; }
+    #calc-display { width: 100%; padding: 10px; font-size: 20px; margin-bottom: 10px; border: 1px solid #aaa; border-radius: 6px; }
+    .calc-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .calc-buttons button { padding: 15px; font-size: 18px; border: none; border-radius: 6px; background: #333; color: white; }
   </style>
 </head>
 <body>
 
-<!-- Calculator -->
-<div id="calc">
-  <div id="display">0</div>
-  <div class="btns">
-    <button>7</button><button>8</button><button>9</button><button>/</button>
-    <button>4</button><button>5</button><button>6</button><button>*</button>
-    <button>1</button><button>2</button><button>3</button><button>-</button>
-    <button>0</button><button>.</button><button id="equals">=</button><button>+</button>
+  <!-- Calculator -->
+  <div id="calculator">
+    <input id="calc-display" readonly>
+    <div class="calc-buttons">
+      <button>7</button><button>8</button><button>9</button><button>/</button>
+      <button>4</button><button>5</button><button>6</button><button>*</button>
+      <button>1</button><button>2</button><button>3</button><button>-</button>
+      <button>0</button><button>.</button><button id="calcEqual">=</button><button>+</button>
+    </div>
   </div>
-</div>
 
-<!-- Chat -->
-<div id="chat">
-  <div id="status">Connecting...</div>
-  <div id="messages"></div>
-  <div id="inputRow">
-    <input id="msgInput" placeholder="Type message...">
-    <button id="sendBtn">Send</button>
+  <!-- Chat -->
+  <div id="chatContainer">
+    <div id="onlineBox">Checking online...</div>
+    <div id="chatBox"></div>
+    <div id="typing"></div>
+    <div id="inputBox">
+      <input id="messageInput" placeholder="Type a message...">
+      <button id="sendBtn">Send</button>
+      <button id="clearBtn">Clear</button>
+      <button id="emergencyBtn">🚨</button>
+    </div>
   </div>
-  <button id="emergency">Emergency</button>
-</div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set, onDisconnect, serverTimestamp } 
+      from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
-  authDomain: "chat-ab2b7.firebaseapp.com",
-  databaseURL: "https://chat-ab2b7-default-rtdb.firebaseio.com",
-  projectId: "chat-ab2b7",
-  storageBucket: "chat-ab2b7.firebasestorage.app",
-  messagingSenderId: "978470856109",
-  appId: "1:978470856109:web:b8e64269b09ffd5225ed24",
-  measurementId: "G-S46Z82JYKW"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+    // Firebase setup
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
+      authDomain: "chat-ab2b7.firebaseapp.com",
+      databaseURL: "https://chat-ab2b7-default-rtdb.firebaseio.com/",
+      projectId: "chat-ab2b7",
+      storageBucket: "chat-ab2b7.firebasestorage.app",
+      messagingSenderId: "978470856109",
+      appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
+    };
 
-const calc = document.getElementById("calc");
-const chat = document.getElementById("chat");
-const display = document.getElementById("display");
-const buttons = document.querySelectorAll(".btns button");
-const msgInput = document.getElementById("msgInput");
-const sendBtn = document.getElementById("sendBtn");
-const messagesDiv = document.getElementById("messages");
-const statusDiv = document.getElementById("status");
-const emergency = document.getElementById("emergency");
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-let expr = "";
-let uid = null;
-let name = localStorage.getItem("chat_name") || prompt("Enter your name:") || "Anonymous";
-localStorage.setItem("chat_name", name);
-const secret = "0304";
+    const username = localStorage.getItem("username") || prompt("Enter your name:");
+    localStorage.setItem("username", username);
 
-// Calculator
-buttons.forEach(b => {
-  b.onclick = () => {
-    const v = b.textContent;
-    if (v === "=") {
-      if (expr === secret) {
-        openChat();
-      } else {
-        try { display.textContent = eval(expr) } catch { display.textContent = "Err" }
-        expr = "";
-      }
-    } else {
-      expr += v;
-      display.textContent = expr;
+    const chatContainer = document.getElementById("chatContainer");
+    const calcContainer = document.getElementById("calculator");
+    const calcDisplay = document.getElementById("calc-display");
+    const chatBox = document.getElementById("chatBox");
+    const onlineBox = document.getElementById("onlineBox");
+    const typingDiv = document.getElementById("typing");
+    const input = document.getElementById("messageInput");
+
+    const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const emergencyBtn = document.getElementById("emergencyBtn");
+    const calcEqual = document.getElementById("calcEqual");
+
+    let secretCode = "0304";
+    let calcValue = "";
+
+    // Hide chat initially
+    showCalculator();
+
+    // Presence
+    const presenceRef = ref(db, 'presence/' + username);
+    set(presenceRef, { online: true, lastActive: serverTimestamp() });
+    onDisconnect(presenceRef).set({ online: false, lastActive: serverTimestamp() });
+
+    onValue(ref(db, 'presence'), snap => {
+      const data = snap.val() || {};
+      const online = Object.keys(data).filter(k => data[k].online);
+      onlineBox.textContent = "🟢 Online: " + (online.length ? online.join(", ") : "No one");
+    });
+
+    // Chat messages
+    onValue(ref(db, 'messages'), snap => {
+      chatBox.innerHTML = "";
+      const data = snap.val() || {};
+      Object.values(data).sort((a,b)=>a.ts-b.ts).forEach(msg=>{
+        const div = document.createElement("div");
+        div.className = "message" + (msg.sender === username ? " self" : "");
+        div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}<div class='meta'>${msg.time}</div>`;
+        chatBox.appendChild(div);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    sendBtn.onclick = () => {
+      const text = input.value.trim();
+      if (!text) return;
+      push(ref(db, 'messages'), { sender: username, text, ts: Date.now(), time: new Date().toLocaleTimeString() });
+      input.value = "";
+    };
+
+    clearBtn.onclick = () => { chatBox.innerHTML = ""; };
+
+    emergencyBtn.onclick = () => {
+      localStorage.clear();
+      chatBox.innerHTML = "";
+      showCalculator();
+    };
+
+    // Simple calculator
+    document.querySelectorAll(".calc-buttons button").forEach(btn => {
+      btn.onclick = () => {
+        const val = btn.textContent;
+        if (val === "=") {
+          if (calcValue === secretCode) {
+            showChat();
+          } else {
+            try { calcValue = eval(calcValue).toString(); } catch { calcValue = "Error"; }
+            calcDisplay.value = calcValue;
+          }
+        } else {
+          calcValue += val;
+          calcDisplay.value = calcValue;
+        }
+      };
+    });
+
+    // Functions
+    function showCalculator() {
+      calcContainer.style.display = "flex";
+      chatContainer.style.display = "none";
+      calcValue = "";
+      calcDisplay.value = "";
     }
-  };
-});
+    function showChat() {
+      calcContainer.style.display = "none";
+      chatContainer.style.display = "flex";
+    }
 
-// Chat
-auth.signInAnonymously().then(u => {
-  uid = u.user.uid;
-  const presenceRef = db.ref("presence/" + uid);
-  presenceRef.set({ name, online: true, lastSeen: Date.now() });
-  presenceRef.onDisconnect().set({ name, online: false, lastSeen: Date.now() });
-
-  db.ref("presence").on("value", snap => {
-    const data = snap.val() || {};
-    const online = Object.values(data).filter(p => p.online && p.name !== name).map(p => p.name).join(", ");
-    statusDiv.textContent = online ? "Online: " + online : "No one online";
-  });
-
-  db.ref("messages").on("child_added", s => {
-    const m = s.val();
-    const div = document.createElement("div");
-    div.className = "msg " + (m.uid === uid ? "mine" : "");
-    div.innerHTML = `<b>${m.name}</b>: ${m.text}<br><small>${new Date(m.time).toLocaleTimeString()}</small>`;
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  });
-});
-
-sendBtn.onclick = sendMessage;
-msgInput.onkeydown = e => { if (e.key === "Enter") sendMessage(); };
-
-function sendMessage() {
-  const text = msgInput.value.trim();
-  if (!text) return;
-  db.ref("messages").push({ name, uid, text, time: Date.now() });
-  msgInput.value = "";
-}
-
-emergency.onclick = () => {
-  chat.style.display = "none";
-  calc.style.display = "block";
-  messagesDiv.innerHTML = "";
-  display.textContent = "0";
-};
-
-function openChat() {
-  calc.style.display = "none";
-  chat.style.display = "flex";
-}
-
-// always go back to calculator on reload
-window.addEventListener("load", () => {
-  chat.style.display = "none";
-  calc.style.display = "block";
-});
-</script>
-
+    // If page reload or back pressed → calculator
+    window.onbeforeunload = () => {
+      showCalculator();
+    };
+  </script>
 </body>
 </html>

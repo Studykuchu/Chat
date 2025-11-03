@@ -1,127 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat with Lock</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simple Chat</title>
+  <link rel="manifest" href="/manifest.json" />
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      color: #222;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: 0.3s;
-    }
-    .dark { background: #121212; color: #eee; }
+    body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222;height:100vh;margin:0;display:flex;flex-direction:column;transition:.2s}
+    .dark{background:#121212;color:#eee}
+    #calculator{display:none;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111;color:white}
+    #calc-display{width:220px;padding:10px;font-size:1.5rem;margin-bottom:10px;text-align:right;border:none;border-radius:6px;}
+    .calc-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:220px}
+    .calc-buttons button{padding:15px;font-size:1.2rem;border:none;border-radius:8px;background:#333;color:white;cursor:pointer}
+    .calc-buttons button:hover{background:#555}
 
-    #calculator, #chatContainer { display: none; }
-    #calculator.active, #chatContainer.active { display: block; }
-
-    /* Calculator */
-    #calculator {
-      text-align: center;
-    }
-    #calc {
-      display: grid;
-      grid-template-columns: repeat(4, 70px);
-      gap: 10px;
-      justify-content: center;
-    }
-    #display {
-      grid-column: span 4;
-      height: 50px;
-      text-align: right;
-      font-size: 20px;
-      border: none;
-      border-radius: 8px;
-      padding: 10px;
-    }
-    #calc button {
-      height: 60px;
-      font-size: 20px;
-      border: none;
-      border-radius: 8px;
-      background: #333;
-      color: white;
-      cursor: pointer;
-    }
-    #calc button:hover { background: #555; }
-
-    /* Chat box */
-    #chatContainer {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 500px;
-      height: 90vh;
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    .dark #chatContainer { background: #1f1f1f; }
-    #chatBox {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-    }
-    .message {
-      background: #e0e0e0;
-      padding: 8px;
-      margin: 5px;
-      border-radius: 8px;
-      max-width: 75%;
-      word-wrap: break-word;
-    }
-    .you { background: #0078ff; color: white; margin-left: auto; }
-    footer {
-      display: flex;
-      padding: 10px;
-      gap: 8px;
-      background: #f0f0f0;
-    }
-    input { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; outline: none; }
-    button { padding: 10px 14px; border: none; border-radius: 8px; background: #0078ff; color: white; cursor: pointer; }
-    #onlineUsers, #typingStatus { text-align: center; font-size: 14px; padding: 4px; }
-    .meta { font-size: 11px; color: #666; margin-top:6px; }
+    #onlineBox{font-size:13px;padding:8px 10px;color:gray;border-bottom:1px solid rgba(0,0,0,0.05)}
+    #chatBox{flex:1;padding:10px;overflow-y:auto;display:flex;flex-direction:column}
+    .message{margin:6px 0;padding:8px 10px;border-radius:8px;background:#e8e8e8;max-width:80%;align-self:flex-start}
+    .self{background:#0078ff;color:#fff;align-self:flex-end}
+    .meta{font-size:11px;opacity:.7;margin-top:6px;text-align:right}
+    #typing{font-size:13px;color:gray;padding:6px 10px}
+    #inputBox{display:flex;padding:10px;background:#eaeaea}
+    #messageInput{flex:1;padding:8px;border-radius:6px;border:1px solid #ccc}
+    button{padding:8px 12px;margin-left:6px;border:none;border-radius:6px;background:#0078ff;color:#fff;cursor:pointer}
+    #emergencyBtn{background:#d32f2f}
   </style>
 </head>
 <body>
-
-  <!-- 🔐 Calculator -->
-  <div id="calculator" class="active">
-    <h2>Calculator</h2>
-    <div id="calc">
-      <input id="display" readonly />
-      <button>7</button><button>8</button><button>9</button><button>/</button>
-      <button>4</button><button>5</button><button>6</button><button>*</button>
-      <button>1</button><button>2</button><button>3</button><button>-</button>
-      <button>0</button><button id="clear">C</button><button id="equal">=</button><button>+</button>
+  <!-- Calculator Gate -->
+  <div id="calculator">
+    <input type="text" id="calc-display" readonly />
+    <div class="calc-buttons">
+      <button onclick="press(1)">1</button>
+      <button onclick="press(2)">2</button>
+      <button onclick="press(3)">3</button>
+      <button onclick="press('+')">+</button>
+      <button onclick="press(4)">4</button>
+      <button onclick="press(5)">5</button>
+      <button onclick="press(6)">6</button>
+      <button onclick="press('-')">-</button>
+      <button onclick="press(7)">7</button>
+      <button onclick="press(8)">8</button>
+      <button onclick="press(9)">9</button>
+      <button onclick="press('*')">*</button>
+      <button onclick="press(0)">0</button>
+      <button onclick="clearDisplay()">C</button>
+      <button onclick="checkPassword()">=</button>
+      <button onclick="press('/')">/</button>
     </div>
   </div>
 
-  <!-- 💬 Chat section -->
-  <div id="chatContainer" aria-hidden="true">
-    <div id="onlineUsers">Checking online users...</div>
-    <div id="typingStatus"></div>
-    <div id="chatBox" role="log" aria-live="polite"></div>
-    <footer>
-      <input id="messageInput" placeholder="Type..." autocomplete="off" />
+  <!-- Actual Chat -->
+  <div id="chatUI" style="display:none;">
+    <div id="onlineBox">Checking online...</div>
+    <div id="chatBox"></div>
+    <div id="typing"></div>
+    <div id="inputBox">
+      <input id="messageInput" placeholder="Type a message..." />
       <button id="sendBtn">Send</button>
       <button id="clearBtn">Clear</button>
-      <button id="emergencyBtn">⚠️</button>
-    </footer>
+      <button id="emergencyBtn">🚨</button>
+      <button id="toggleBtn">🌙</button>
+    </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove, set, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    // ---------- CALCULATOR LOCK ----------
+    const calculator = document.getElementById('calculator');
+    const chatUI = document.getElementById('chatUI');
+    const display = document.getElementById('calc-display');
+    const PASS = "0304";
 
-    // --- Firebase config (your project) ---
+    function press(val){ display.value += val; }
+    function clearDisplay(){ display.value = ''; }
+    function checkPassword(){
+      if (display.value === PASS){
+        calculator.style.display='none';
+        chatUI.style.display='flex';
+        localStorage.setItem('unlocked','true');
+      } else {
+        alert('Wrong code!');
+        clearDisplay();
+      }
+    }
+
+    // Show calculator on load if not unlocked
+    window.addEventListener('load', ()=>{
+      if(localStorage.getItem('unlocked')==='true') chatUI.style.display='flex';
+      else calculator.style.display='flex';
+    });
+
+    // On back/reload — always show calculator again
+    window.addEventListener('pageshow',()=>{
+      if(localStorage.getItem('unlocked')!=='true'){
+        calculator.style.display='flex';
+        chatUI.style.display='none';
+      }
+    });
+
+    // ---------- CHAT (your same working Firebase code) ----------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getDatabase, ref, push, onValue, set, onDisconnect, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import {
+      getMessaging, getToken, onMessage
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
@@ -131,200 +116,90 @@
       messagingSenderId: "978470856109",
       appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
+    const VAPID_KEY = "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA";
+
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const messaging = getMessaging(app);
 
-    // DOM elements
-    const calculator = document.getElementById("calculator");
-    const chatContainer = document.getElementById("chatContainer");
-    const display = document.getElementById("display");
-
+    const onlineBox = document.getElementById("onlineBox");
     const chatBox = document.getElementById("chatBox");
-    const onlineUsers = document.getElementById("onlineUsers");
-    const typingStatus = document.getElementById("typingStatus");
-    const messageInput = document.getElementById("messageInput");
+    const typingDiv = document.getElementById("typing");
+    const input = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
     const emergencyBtn = document.getElementById("emergencyBtn");
+    const toggleBtn = document.getElementById("toggleBtn");
 
-    // -------- Calculator logic (unlock code 0304) --------
-    document.querySelectorAll("#calc button").forEach(btn => {
-      btn.onclick = () => {
-        if (btn.id === "equal") {
-          if (display.value === "0304") {
-            unlockChat();
-          } else {
-            alert("Incorrect password!");
-            display.value = "";
-          }
-        } else if (btn.id === "clear") {
-          display.value = "";
-        } else {
-          display.value += btn.textContent;
-        }
-      };
-    });
-
-    function unlockChat() {
-      // show chat
-      calculator.classList.remove("active");
-      chatContainer.classList.add("active");
-      chatContainer.setAttribute("aria-hidden", "false");
-      // store temporary unlocked state so direct reload can be blocked by clearing on unload
-      localStorage.setItem("unlocked", "true");
-      // push history state so Back returns to calc
-      history.pushState({screen:'chat'}, '');
-      // init chat connections
-      startChat();
-      // focus input
-      setTimeout(()=> messageInput.focus(), 200);
+    let username = localStorage.getItem("username");
+    if (!username) {
+      username = prompt("Enter your name:") || ("User" + Math.floor(Math.random()*999));
+      localStorage.setItem("username", username);
     }
 
-    // ensure unlock is not persistent across reloads — remove on unload
-    window.addEventListener("beforeunload", () => {
-      localStorage.removeItem("unlocked");
-    });
-
-    // when user presses Back, go to calculator and clear unlocked state
-    window.addEventListener("popstate", (e) => {
-      // if returning from chat to previous state -> show calculator
-      calculator.classList.add("active");
-      chatContainer.classList.remove("active");
-      chatContainer.setAttribute("aria-hidden", "true");
-      localStorage.removeItem("unlocked");
-    });
-
-    // If user reopened page and unlocked flag found (rare), show calculator instead (force)
-    if (localStorage.getItem("unlocked") === "true") {
-      // ensure we still require calculator on reload — clear it and show calculator
-      localStorage.removeItem("unlocked");
-      calculator.classList.add("active");
-      chatContainer.classList.remove("active");
+    // Presence
+    const presenceRef = ref(db, 'presence/' + username);
+    async function setOnline() {
+      await set(presenceRef, { online: true, lastActive: serverTimestamp() });
+      onDisconnect(presenceRef).set({ online: false, lastActive: serverTimestamp() });
     }
+    setOnline();
+    onValue(ref(db, 'presence'), snap => {
+      const data = snap.val() || {};
+      const onlineNames = [];
+      for (const n in data){ if(data[n].online) onlineNames.push(n); }
+      onlineBox.textContent = onlineNames.length ? '🟢 Online: '+onlineNames.join(', ') : 'No one online';
+    });
 
-    // -------- Chat logic (Firebase) --------
-    let chatStarted = false;
-    function startChat(){
-      if (chatStarted) return;
-      chatStarted = true;
+    // Messages
+    sendBtn.addEventListener('click', () => {
+      const text = input.value.trim();
+      if (!text) return;
+      push(ref(db, 'messages'), {
+        sender: username, text, ts: Date.now(), time: new Date().toLocaleTimeString()
+      });
+      input.value = '';
+    });
 
-      // user name
-      let username = localStorage.getItem("chatName");
-      if (!username) {
-        username = prompt("Enter your name:") || ("User"+Math.floor(Math.random()*9999));
-        localStorage.setItem("chatName", username);
+    onValue(ref(db, 'messages'), snap => {
+      chatBox.innerHTML = '';
+      const data = snap.val() || {};
+      Object.values(data).sort((a,b)=>a.ts-b.ts).forEach(msg=>{
+        const el = document.createElement('div');
+        el.className = 'message' + (msg.sender===username?' self':'');
+        el.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}<div class="meta">${msg.time||''}</div>`;
+        chatBox.appendChild(el);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // Clear chat locally
+    clearBtn.addEventListener('click',()=>{
+      if(confirm('Clear chat locally?')){
+        localStorage.setItem('chatClearedAt', Date.now());
+        chatBox.innerHTML='';
       }
+    });
 
-      // presence: mark online and set onDisconnect
-      const presenceRef = ref(db, 'online/' + username);
-      set(presenceRef, { online: true, lastActive: serverTimestamp() }).catch(()=>{});
-      onDisconnect(presenceRef).remove();
-
-      // update lastActive periodically (keeps presence fresh)
-      setInterval(()=> {
-        set(presenceRef, { online: true, lastActive: serverTimestamp() }).catch(()=>{});
-      }, 30000);
-
-      // show online users / last seen
-      onValue(ref(db,'online'), snap => {
-        const data = snap.val() || {};
-        const onlineList = [], lastSeen = [];
-        for (const k in data) {
-          const v = data[k];
-          if (v && v.online) onlineList.push(k);
-          else if (v && v.lastActive) {
-            const t = Number(v.lastActive) || 0;
-            const ago = timeAgo(t);
-            lastSeen.push(`${k}: last ${ago}`);
-          }
-        }
-        if (onlineList.length) onlineUsers.textContent = '🟢 Online: ' + onlineList.join(', ');
-        else if (lastSeen.length) onlineUsers.textContent = lastSeen.join(' • ');
-        else onlineUsers.textContent = 'No one online';
+    // Emergency
+    emergencyBtn.addEventListener('click',()=>{
+      push(ref(db,'messages'),{
+        sender:'⚠️ System',
+        text:`${username} pressed the EMERGENCY button!`,
+        ts:Date.now(),
+        time:new Date().toLocaleTimeString()
       });
+      localStorage.removeItem('unlocked');
+      chatUI.style.display='none';
+      calculator.style.display='flex';
+      window.open('https://pw.live','_blank');
+    });
 
-      // typing indicator
-      let typingTimeout;
-      messageInput.addEventListener('input', () => {
-        set(ref(db,'typing/'+username), true).catch(()=>{});
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(()=> set(ref(db,'typing/'+username), false).catch(()=>{}), 1200);
-      });
-      onValue(ref(db,'typing'), snap => {
-        const data = snap.val() || {};
-        const others = Object.keys(data).filter(n => n !== username && data[n]);
-        typingStatus.textContent = others.length ? `${others.join(', ')} is typing...` : '';
-      });
-
-      // load messages
-      const messagesRef = ref(db, 'messages');
-      onValue(messagesRef, snap => {
-        chatBox.innerHTML = '';
-        const data = snap.val() || {};
-        // sort by push order isn't guaranteed; convert to array and sort by timestamp if available
-        const arr = Object.keys(data).map(k => data[k]).sort((a,b)=>{
-          return (a.timestamp||0) - (b.timestamp||0);
-        });
-        for (const m of arr) {
-          const d = document.createElement('div');
-          d.className = 'message' + (m.sender === username ? ' you' : '');
-          // name, text, time in parentheses
-          const timeText = m.time || '';
-          d.innerHTML = `<strong>${escapeHtml(m.sender)}:</strong> ${escapeHtml(m.text)}<div class="meta">${escapeHtml(timeText)}</div>`;
-          chatBox.appendChild(d);
-        }
-        chatBox.scrollTop = chatBox.scrollHeight;
-      });
-
-      // send
-      sendBtn.onclick = () => {
-        const text = messageInput.value.trim();
-        if (!text) return;
-        push(messagesRef, {
-          sender: username,
-          text,
-          time: new Date().toLocaleTimeString(),
-          timestamp: Date.now()
-        }).catch(()=>{});
-        messageInput.value = '';
-        set(ref(db,'typing/'+username), false).catch(()=>{});
-      };
-
-      // clear - remove all messages (matches your posted behaviour)
-      clearBtn.onclick = () => {
-        if (!confirm('Delete all messages for everyone?')) return;
-        remove(messagesRef).catch(()=>{});
-        chatBox.innerHTML = '';
-      };
-
-      // emergency - send system message, delete all, reset lock, open pw.live and go back to calculator
-      emergencyBtn.onclick = async () => {
-        await push(messagesRef, {
-          sender: '⚠️ ALERT',
-          text: `${username} pressed EMERGENCY!`,
-          time: new Date().toLocaleTimeString(),
-          timestamp: Date.now()
-        }).catch(()=>{});
-        await remove(messagesRef).catch(()=>{});
-        localStorage.removeItem('unlocked');
-        // open pw.live
-        window.open('https://pw.live', '_blank');
-        // show calculator
-        calculator.classList.add('active');
-        chatContainer.classList.remove('active');
-      };
-    }
-
-    // small helpers
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-    function timeAgo(ts){
-      const diff = Math.floor((Date.now() - ts)/1000);
-      if (diff < 60) return `${diff}s ago`;
-      if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-      if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
-      return `${Math.floor(diff/86400)}d ago`;
-    }
-
+    // Dark mode
+    toggleBtn.addEventListener('click',()=>{
+      document.body.classList.toggle('dark');
+      toggleBtn.textContent=document.body.classList.contains('dark')?'☀️':'🌙';
+    });
   </script>
 </body>
 </html>

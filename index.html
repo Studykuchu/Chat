@@ -3,54 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Secret Chat</title>
+  <title>Calculatorr</title>
   <style>
-    :root {
-      --bg: #f4f4f4;
-      --fg: #000;
-      --chat-bg: #e8e8e8;
-      --self-bg: #0078ff;
-      --self-fg: #fff;
-    }
-    [data-theme="dark"] {
-      --bg: #121212;
-      --fg: #fff;
-      --chat-bg: #222;
-      --self-bg: #0078ff;
-      --self-fg: #fff;
-    }
     body {
       margin: 0; padding: 0;
-      background: var(--bg); color: var(--fg);
-      font-family: Arial, sans-serif;
+      background: #e3e3e3; color: #000;
+      font-family: "Segoe UI", Arial, sans-serif;
       height: 100vh; display: flex; flex-direction: column;
-      transition: background 0.3s, color 0.3s;
     }
-    #chatContainer { flex: 1; display: flex; flex-direction: column; }
+    /* Calculator */
+    #calculator {
+      flex: 1;
+      display: flex; flex-direction: column; 
+      justify-content: center; align-items: center;
+    }
+    #calc-display {
+      width: 240px; padding: 12px; font-size: 22px;
+      border: none; border-radius: 8px; margin-bottom: 10px;
+      background: #f7f7f7; text-align: right; box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .calc-buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 10px;
+    }
+    .calc-buttons button {
+      padding: 15px; font-size: 18px;
+      border: none; border-radius: 8px;
+      background: #444; color: #fff;
+      cursor: pointer; box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+      transition: transform 0.1s;
+    }
+    .calc-buttons button:active {
+      transform: scale(0.95);
+    }
+    #calcClear {
+      background: #d32f2f;
+    }
+
+    /* Chat */
+    #chatContainer { flex: 1; display: none; flex-direction: column; background: #f4f4f4; }
     #onlineBox { background: #0078ff; color: white; padding: 8px; font-size: 14px; }
     #chatBox { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; }
-    .message { margin: 6px 0; padding: 8px 10px; border-radius: 10px; background: var(--chat-bg); max-width: 70%; align-self: flex-start; color: var(--fg); }
-    .self { background: var(--self-bg); color: var(--self-fg); align-self: flex-end; }
+    .message { margin: 6px 0; padding: 8px 10px; border-radius: 10px; background: #e8e8e8; max-width: 70%; align-self: flex-start; color: #000; }
+    .self { background: #0078ff; color: #fff; align-self: flex-end; }
     .meta { font-size: 11px; text-align: right; opacity: 0.7; }
     #inputBox { display: flex; padding: 10px; background: #eee; }
     #messageInput { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
     button { margin-left: 6px; padding: 8px 10px; border: none; border-radius: 6px; background: #0078ff; color: white; cursor: pointer; }
     #emergencyBtn { background: #d32f2f; }
-    #typing { font-size: 13px; color: gray; padding-left: 10px; margin-bottom: 5px; }
 
-    /* Calculator */
-    #calculator { display: none; flex-direction: column; padding: 20px; }
-    #calc-display { width: 100%; padding: 10px; font-size: 20px; margin-bottom: 10px; border: 1px solid #aaa; border-radius: 6px; text-align: right; }
-    .calc-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-    .calc-buttons button { padding: 15px; font-size: 18px; border: none; border-radius: 6px; background: #333; color: white; cursor: pointer; }
-    .calc-buttons button:hover { background: #444; }
-    #themeToggle { position: absolute; top: 10px; right: 10px; background: #555; }
   </style>
 </head>
 <body>
-
-  <!-- Dark/Light Toggle -->
-  <button id="themeToggle">🌙</button>
 
   <!-- Calculator -->
   <div id="calculator">
@@ -68,7 +73,6 @@
   <div id="chatContainer">
     <div id="onlineBox">Checking online...</div>
     <div id="chatBox"></div>
-    <div id="typing"></div>
     <div id="inputBox">
       <input id="messageInput" placeholder="Type a message...">
       <button id="sendBtn">Send</button>
@@ -108,20 +112,11 @@
     const clearBtn = document.getElementById("clearBtn");
     const emergencyBtn = document.getElementById("emergencyBtn");
     const calcClear = document.getElementById("calcClear");
-    const themeToggle = document.getElementById("themeToggle");
 
     let secretCode = "0304";
     let calcValue = "";
 
-    // --- THEME ---
-    if (localStorage.getItem("theme") === "dark") document.body.dataset.theme = "dark";
-    themeToggle.onclick = () => {
-      document.body.dataset.theme = document.body.dataset.theme === "dark" ? "" : "dark";
-      localStorage.setItem("theme", document.body.dataset.theme || "light");
-      themeToggle.textContent = document.body.dataset.theme === "dark" ? "☀️" : "🌙";
-    };
-
-    // --- PRESENCE ---
+    // --- Presence ---
     const presenceRef = ref(db, 'presence/' + username);
     set(presenceRef, { online: true, lastActive: Date.now() });
     onDisconnect(presenceRef).set({ online: false, lastActive: Date.now() });
@@ -143,7 +138,7 @@
       else onlineBox.textContent = "No one online";
     });
 
-    // --- CHAT MESSAGES ---
+    // --- Chat ---
     onValue(ref(db, 'messages'), snap => {
       const clearedAt = Number(localStorage.getItem('clearedAt') || 0);
       chatBox.innerHTML = "";
@@ -178,7 +173,7 @@
       showCalculator();
     };
 
-    // --- CALCULATOR ---
+    // --- Calculator ---
     document.querySelectorAll(".calc-buttons button").forEach(btn => {
       btn.onclick = () => {
         const val = btn.textContent;
@@ -204,13 +199,14 @@
       chatContainer.style.display = "none";
       calcValue = "";
       calcDisplay.value = "";
+      document.title = "Calculatorr";
     }
     function showChat() {
       calcContainer.style.display = "none";
       chatContainer.style.display = "flex";
+      document.title = "Calculatorr";
     }
 
-    // Back or reload → calculator
     window.onbeforeunload = () => { showCalculator(); };
 
     function formatAMPM(date) {
@@ -223,7 +219,6 @@
       return `${hours}:${minutes} ${ampm}`;
     }
 
-    // Start hidden under calculator
     showCalculator();
   </script>
 </body>

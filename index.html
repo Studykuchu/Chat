@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simple Chat</title>
-  <link rel="manifest" href="manifest.json" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -24,6 +23,27 @@
       flex: 1;
       padding: 10px;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 4px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      background: #e2e2e2;
+      max-width: 80%;
+      align-self: flex-start;
+    }
+    .self {
+      background: #4CAF50;
+      color: white;
+      align-self: flex-end;
+    }
+    .time {
+      font-size: 11px;
+      opacity: 0.6;
+      display: block;
+      text-align: right;
     }
     #inputBox {
       display: flex;
@@ -33,6 +53,8 @@
     #messageInput {
       flex: 1;
       padding: 8px;
+      border-radius: 6px;
+      border: none;
     }
     button {
       padding: 8px 12px;
@@ -41,11 +63,15 @@
       border-radius: 6px;
       background-color: #4CAF50;
       color: white;
+      cursor: pointer;
     }
     #typing {
       font-size: 12px;
       color: gray;
-      padding-left: 10px;
+      padding: 5px 10px;
+    }
+    #emergencyBtn {
+      background-color: red;
     }
   </style>
 </head>
@@ -57,6 +83,7 @@
     <button id="sendBtn">Send</button>
     <button id="clearBtn">Clear</button>
     <button id="toggleBtn">🌙</button>
+    <button id="emergencyBtn">🚨</button>
   </div>
 
   <script type="module">
@@ -78,19 +105,34 @@
     const db = getDatabase(app);
     const messaging = getMessaging(app);
 
-    // 🔹 Ask username
-    let username = localStorage.getItem("username");
-    if (!username) {
-      username = prompt("Enter your name:");
-      localStorage.setItem("username", username);
-    }
-
     const chatBox = document.getElementById("chatBox");
     const input = document.getElementById("messageInput");
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
     const typingDiv = document.getElementById("typing");
     const toggleBtn = document.getElementById("toggleBtn");
+    const emergencyBtn = document.getElementById("emergencyBtn");
+
+    // 🔹 Username
+    let username = localStorage.getItem("username");
+    if (!username) {
+      username = prompt("Enter your name:");
+      localStorage.setItem("username", username);
+    }
+
+    // 🔹 Register Service Worker
+    navigator.serviceWorker.register("/firebase-messaging-sw.js");
+
+    // 🔹 Request Notification Permission
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        getToken(messaging, {
+          vapidKey: "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA"
+        }).then(token => {
+          console.log("FCM Token:", token);
+        });
+      }
+    });
 
     // 🔹 Dark mode toggle
     toggleBtn.onclick = () => {
@@ -111,6 +153,27 @@
       }
     };
 
+    // 🔹 Clear chat (local only)
+    clearBtn.onclick = () => {
+      localStorage.setItem("chatClearedAt", Date.now());
+      chatBox.innerHTML = "";
+    };
+
+    // 🔹 Emergency Button
+    emergencyBtn.onclick = () => {
+      // open pw.live
+      window.open("https://pw.live", "_blank");
+      // clear chat locally
+      localStorage.setItem("chatClearedAt", Date.now());
+      chatBox.innerHTML = "";
+      // inform others
+      push(ref(db, "messages"), {
+        sender: "⚠️ System",
+        text: `${username} pressed the emergency button!`,
+        timestamp: Date.now()
+      });
+    };
+
     // 🔹 Typing indicator
     let typingTimeout;
     input.addEventListener("input", () => {
@@ -125,12 +188,6 @@
       typingDiv.textContent = others.length ? `${others.join(", ")} is typing...` : "";
     });
 
-    // 🔹 Local clear chat
-    clearBtn.onclick = () => {
-      localStorage.setItem("chatClearedAt", Date.now());
-      chatBox.innerHTML = "";
-    };
-
     // 🔹 Load messages
     onValue(ref(db, "messages"), (snapshot) => {
       const clearedAt = parseInt(localStorage.getItem("chatClearedAt") || "0");
@@ -139,30 +196,21 @@
         const msg = child.val();
         if (msg.timestamp > clearedAt) {
           const div = document.createElement("div");
-          div.textContent = `${msg.sender}: ${msg.text}`;
+          div.classList.add("message");
+          if (msg.sender === username) div.classList.add("self");
+
+          const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          div.innerHTML = `<b>${msg.sender}:</b> ${msg.text}<br><span class='time'>${time}</span>`;
           chatBox.appendChild(div);
         }
       });
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
-    // 🔹 Firebase Cloud Messaging setup
-    Notification.requestPermission().then((permission) => {
-      if (permission === "granted") {
-        getToken(messaging, { vapidKey: "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA" })
-          .then((token) => {
-            console.log("🔔 FCM token:", token);
-          })
-          .catch((err) => console.error("Error getting token", err));
-      }
-    });
-
-    // 🔹 Handle notification when page is open
-    onMessage(messaging, (payload) => {
-      new Notification(payload.notification.title, {
-        body: payload.notification.body,
-        icon: "https://cdn-icons-png.flaticon.com/512/1827/1827349.png"
-      });
+    // 🔔 Foreground notification
+    onMessage(messaging, payload => {
+      const { title, body } = payload.notification;
+      new Notification(title, { body });
     });
   </script>
 </body>

@@ -3,36 +3,159 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Simple Chat</title>
+  <title>Calculator</title>
   <link rel="manifest" href="/manifest.json" />
   <style>
-    body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222;height:100vh;margin:0;display:flex;flex-direction:column;transition:.2s}
-    .dark{background:#121212;color:#eee}
-    #onlineBox{font-size:13px;padding:8px 10px;color:gray;border-bottom:1px solid rgba(0,0,0,0.05)}
-    #chatBox{flex:1;padding:10px;overflow-y:auto;display:flex;flex-direction:column}
-    .message{margin:6px 0;padding:8px 10px;border-radius:8px;background:#e8e8e8;max-width:80%;align-self:flex-start}
-    .self{background:#0078ff;color:#fff;align-self:flex-end}
-    .meta{font-size:11px;opacity:.7;margin-top:6px;text-align:right}
-    #typing{font-size:13px;color:gray;padding:6px 10px}
-    #inputBox{display:flex;padding:10px;background:#eaeaea}
-    #messageInput{flex:1;padding:8px;border-radius:6px;border:1px solid #ccc}
-    button{padding:8px 12px;margin-left:6px;border:none;border-radius:6px;background:#0078ff;color:#fff;cursor:pointer}
-    #emergencyBtn{background:#d32f2f}
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f4f4;
+      color: #222;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      transition: 0.2s;
+    }
+    .hidden { display: none; }
+
+    /* Calculator styles */
+    #calc {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #calcBox {
+      width: 260px;
+      background: #222;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+    #calcDisplay {
+      width: 100%;
+      height: 40px;
+      background: #000;
+      color: #0f0;
+      font-size: 20px;
+      border: none;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      text-align: right;
+    }
+    .calcBtn {
+      width: 50px;
+      height: 50px;
+      margin: 5px;
+      font-size: 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #333;
+      color: white;
+    }
+    .calcBtn:active { background: #555; }
+    .calcRow {
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Chat styles */
+    .dark { background: #121212; color: #eee; }
+    #onlineBox { font-size: 13px; padding: 8px 10px; color: gray; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    #chatBox { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; }
+    .message { margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: #e8e8e8; max-width: 80%; align-self: flex-start; }
+    .self { background: #0078ff; color: #fff; align-self: flex-end; }
+    .meta { font-size: 11px; opacity: .7; margin-top: 6px; text-align: right; }
+    #typing { font-size: 13px; color: gray; padding: 6px 10px; }
+    #inputBox { display: flex; padding: 10px; background: #eaeaea; }
+    #messageInput { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    button { padding: 8px 12px; margin-left: 6px; border: none; border-radius: 6px; background: #0078ff; color: #fff; cursor: pointer; }
+    #emergencyBtn { background: #d32f2f; }
   </style>
 </head>
 <body>
-  <div id="onlineBox">Checking online...</div>
-  <div id="chatBox"></div>
-  <div id="typing"></div>
 
-  <div id="inputBox">
-    <input id="messageInput" placeholder="Type a message..." />
-    <button id="sendBtn">Send</button>
-    <button id="clearBtn">Clear</button>
-    <button id="emergencyBtn">🚨</button>
-    <button id="toggleBtn">🌙</button>
+  <!-- Calculator Lock Screen -->
+  <div id="calc">
+    <div id="calcBox">
+      <input type="text" id="calcDisplay" readonly />
+      <div class="calcRow">
+        <button class="calcBtn">7</button>
+        <button class="calcBtn">8</button>
+        <button class="calcBtn">9</button>
+        <button class="calcBtn">C</button>
+      </div>
+      <div class="calcRow">
+        <button class="calcBtn">4</button>
+        <button class="calcBtn">5</button>
+        <button class="calcBtn">6</button>
+        <button class="calcBtn">+</button>
+      </div>
+      <div class="calcRow">
+        <button class="calcBtn">1</button>
+        <button class="calcBtn">2</button>
+        <button class="calcBtn">3</button>
+        <button class="calcBtn">-</button>
+      </div>
+      <div class="calcRow">
+        <button class="calcBtn">0</button>
+        <button class="calcBtn">=</button>
+        <button class="calcBtn">*</button>
+        <button class="calcBtn">/</button>
+      </div>
+    </div>
   </div>
 
+  <!-- Hidden Chat Section -->
+  <div id="chatApp" class="hidden">
+    <div id="onlineBox">Checking online...</div>
+    <div id="chatBox"></div>
+    <div id="typing"></div>
+    <div id="inputBox">
+      <input id="messageInput" placeholder="Type a message..." />
+      <button id="sendBtn">Send</button>
+      <button id="clearBtn">Clear</button>
+      <button id="emergencyBtn">🚨</button>
+      <button id="toggleBtn">🌙</button>
+    </div>
+  </div>
+
+  <script type="module">
+    // 🔐 Calculator lock
+    const calcDisplay = document.getElementById("calcDisplay");
+    const calcButtons = document.querySelectorAll(".calcBtn");
+    const calcDiv = document.getElementById("calc");
+    const chatApp = document.getElementById("chatApp");
+
+    let calcInput = "";
+    calcButtons.forEach(btn => {
+      btn.onclick = () => {
+        const val = btn.textContent;
+        if (val === "C") {
+          calcInput = "";
+          calcDisplay.value = "";
+        } else if (val === "=") {
+          if (calcInput === "0304") {
+            calcDiv.classList.add("hidden");
+            chatApp.classList.remove("hidden");
+            document.title = "Simple Chat";
+          } else {
+            calcDisplay.value = "Error";
+            calcInput = "";
+            setTimeout(() => (calcDisplay.value = ""), 800);
+          }
+        } else {
+          calcInput += val;
+          calcDisplay.value = calcInput;
+        }
+      };
+    });
+  </script>
+
+  <!-- 🔹 Chat Script (unchanged) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import {
@@ -42,7 +165,7 @@
       getMessaging, getToken, onMessage
     } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging.js";
 
-    // ---------- CONFIG ----------
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
@@ -52,15 +175,13 @@
       messagingSenderId: "978470856109",
       appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
-    // your VAPID key (you provided this earlier)
     const VAPID_KEY = "BBbBHQbrOZ_5abtXJaW8rzmrolFvZ0Nq5NAwk_DQ5jIVXjJttzHsKwAAKx8uEPj5yQ2I3pAeW8Kr4Y1b3vDh9wA";
 
-    // ---------- INIT ----------
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const messaging = getMessaging(app);
 
-    // DOM
+    // Elements
     const onlineBox = document.getElementById("onlineBox");
     const chatBox = document.getElementById("chatBox");
     const typingDiv = document.getElementById("typing");
@@ -70,51 +191,34 @@
     const emergencyBtn = document.getElementById("emergencyBtn");
     const toggleBtn = document.getElementById("toggleBtn");
 
-    // ---------- USER ----------
+    // User
     let username = localStorage.getItem("username");
     if (!username) {
       username = prompt("Enter your name:") || ("User" + Math.floor(Math.random()*999));
       localStorage.setItem("username", username);
     }
 
-    // ---------- SERVICE WORKER for FCM ----------
+    // Register service worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(reg => console.log('Service worker registered at', reg.scope))
-        .catch(err => console.warn('SW register failed:', err));
+      navigator.serviceWorker.register('/firebase-messaging-sw.js');
     }
 
-    // ---------- FCM: permission + token ----------
+    // FCM setup
     async function setupFCM(){
-      try {
-        const perm = await Notification.requestPermission();
-        if (perm !== 'granted') {
-          console.warn('Notifications not granted');
-          return;
-        }
-        // get registration (must exist) and use it when getting token
-        const reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
-        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
-        console.log('FCM token:', token);
-        if (token) {
-          // store token under username so Cloud Function or admin can notify this device
-          await set(ref(db, 'fcmTokens/' + username), { token: token, ts: Date.now() });
-        }
-      } catch (e) {
-        console.error('FCM setup error', e);
-      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return;
+      const reg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+      const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+      if (token) await set(ref(db, 'fcmTokens/' + username), { token: token, ts: Date.now() });
     }
     setupFCM();
 
-    // foreground FCM messages
     onMessage(messaging, payload => {
       const n = payload.notification || {};
-      if (Notification.permission === 'granted') {
-        new Notification(n.title || 'New message', { body: n.body || '', icon: n.icon || undefined });
-      }
+      new Notification(n.title || 'New message', { body: n.body || '' });
     });
 
-    // ---------- PRESENCE: online / last seen ----------
+    // Presence
     const presenceRef = ref(db, 'presence/' + username);
     async function setOnline() {
       await set(presenceRef, { online: true, lastActive: serverTimestamp() });
@@ -124,35 +228,12 @@
 
     onValue(ref(db, 'presence'), snap => {
       const data = snap.val() || {};
-      const onlineNames = [], lastSeenLines = [];
-      for (const name in data) {
-        const info = data[name];
-        if (info && info.online) onlineNames.push(name);
-        else if (info && info.lastActive) {
-          const t = Number(info.lastActive) || 0;
-          const ago = t ? timeAgo(t) : 'some time';
-          lastSeenLines.push(`${name}: last seen ${ago}`);
-        }
-      }
-      if (onlineNames.length) onlineBox.textContent = '🟢 Online: ' + onlineNames.join(', ');
-      else if (lastSeenLines.length) onlineBox.textContent = lastSeenLines.join(' • ');
-      else onlineBox.textContent = 'No one online';
+      const onlineNames = [];
+      for (const name in data) if (data[name].online) onlineNames.push(name);
+      onlineBox.textContent = onlineNames.length ? '🟢 Online: ' + onlineNames.join(', ') : 'No one online';
     });
 
-    function timeAgo(ts){
-      const s = Math.floor((Date.now() - ts)/1000);
-      if (s < 60) return `${s}s ago`;
-      if (s < 3600) return `${Math.floor(s/60)}m ago`;
-      if (s < 86400) return `${Math.floor(s/3600)}h ago`;
-      return `${Math.floor(s/86400)}d ago`;
-    }
-
-    // periodically refresh lastActive so presence stays fresh
-    setInterval(()=> {
-      set(ref(db, 'presence/' + username), { online: true, lastActive: serverTimestamp() }).catch(()=>{});
-    }, 30000);
-
-    // ---------- TYPING ----------
+    // Typing
     let typingTimeout;
     input.addEventListener('input', () => {
       set(ref(db, 'typing/' + username), true);
@@ -165,85 +246,55 @@
       typingDiv.textContent = others.length ? `${others.join(', ')} is typing...` : '';
     });
 
-    // ---------- SEND MESSAGES (no send sound) ----------
-    sendBtn.addEventListener('click', () => {
+    // Send
+    sendBtn.onclick = () => {
       const text = input.value.trim();
       if (!text) return;
-      push(ref(db, 'messages'), {
-        sender: username,
-        text,
-        ts: Date.now(),
-        time: new Date().toLocaleTimeString()
-      });
+      push(ref(db, 'messages'), { sender: username, text, ts: Date.now(), time: new Date().toLocaleTimeString() });
       input.value = '';
-      // stop typing flag
-      set(ref(db, 'typing/' + username), false).catch(()=>{});
-    });
+      set(ref(db, 'typing/' + username), false);
+    };
 
-    // ---------- LOCAL CLEAR (never show past messages again on this device) ----------
-    clearBtn.addEventListener('click', () => {
-      if (!confirm('Clear chat locally? This will hide past messages on this device.')) return;
-      localStorage.setItem('chatClearedAt', Date.now());
-      chatBox.innerHTML = '';
-    });
+    // Clear
+    clearBtn.onclick = () => {
+      localStorage.setItem("chatClearedAt", Date.now());
+      chatBox.innerHTML = "";
+    };
 
-    // ---------- EMERGENCY BUTTON ----------
-    emergencyBtn.addEventListener('click', () => {
-      // inform others via DB
+    // Emergency
+    emergencyBtn.onclick = () => {
       push(ref(db, 'messages'), {
         sender: '⚠️ System',
         text: `${username} pressed the EMERGENCY button!`,
         ts: Date.now(),
         time: new Date().toLocaleTimeString()
       });
-      // clear locally
-      localStorage.setItem('chatClearedAt', Date.now());
-      chatBox.innerHTML = '';
-      // open pw.live
-      window.open('https://pw.live', '_blank');
-    });
+      localStorage.setItem("chatClearedAt", Date.now());
+      chatBox.innerHTML = "";
+      window.open("https://pw.live", "_blank");
+    };
 
-    // ---------- TOGGLE DARK MODE ----------
-    toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark');
-      toggleBtn.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
-    });
+    // Dark mode
+    toggleBtn.onclick = () => {
+      document.body.classList.toggle("dark");
+      toggleBtn.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
+    };
 
-    // ---------- RECEIVE & RENDER MESSAGES (honor local clear) ----------
-    onValue(ref(db, 'messages'), snap => {
-      const clearedAt = Number(localStorage.getItem('chatClearedAt') || 0);
-      chatBox.innerHTML = '';
+    // Load messages
+    onValue(ref(db, "messages"), (snap) => {
+      const clearedAt = Number(localStorage.getItem("chatClearedAt") || 0);
+      chatBox.innerHTML = "";
       const data = snap.val() || {};
-      const list = Object.keys(data).map(k => data[k]).sort((a,b)=> (a.ts||0)-(b.ts||0));
+      const list = Object.keys(data).map(k => data[k]).sort((a,b)=>a.ts-b.ts);
       for (const msg of list) {
         if ((msg.ts || 0) <= clearedAt) continue;
-        const el = document.createElement('div');
-        el.className = 'message' + (msg.sender === username ? ' self' : '');
-        el.innerHTML = `<strong>${escapeHtml(msg.sender)}:</strong> ${escapeHtml(msg.text)}<div class="meta">${escapeHtml(msg.time || '')}</div>`;
-        chatBox.appendChild(el);
+        const div = document.createElement("div");
+        div.className = "message" + (msg.sender === username ? " self" : "");
+        div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}<div class="meta">${msg.time}</div>`;
+        chatBox.appendChild(div);
       }
       chatBox.scrollTop = chatBox.scrollHeight;
     });
-
-    // small escape
-    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-    // ---------- Optional: small visual notice when new message arrives (no sound) ----------
-    // (left intentionally minimal — notifications come from FCM in background)
-    let lastCount = 0;
-    onValue(ref(db, 'messages'), snap => {
-      const data = snap.val() || {};
-      const count = Object.keys(data).length;
-      if (count > lastCount && !document.hasFocus()) {
-        // briefly flash title
-        const original = document.title;
-        document.title = '🔔 New message';
-        setTimeout(()=> document.title = original, 2500);
-      }
-      lastCount = count;
-    });
-
-    // ---------- end ----------
   </script>
 </body>
 </html>

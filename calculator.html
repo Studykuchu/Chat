@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #121212;
+      color: white;
+    }
+    #calc {
+      display: grid;
+      grid-template-columns: repeat(4, 70px);
+      gap: 10px;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    input {
+      grid-column: span 4;
+      height: 60px;
+      text-align: right;
+      font-size: 24px;
+      border: none;
+      border-radius: 8px;
+      background: #2a2a2a;
+      color: white;
+      padding-right: 10px;
+    }
+    button {
+      height: 60px;
+      border: none;
+      border-radius: 8px;
+      font-size: 20px;
+      background: #3a3a3a;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div id="calc">
+    <input id="display" disabled />
+    <button onclick="press('7')">7</button>
+    <button onclick="press('8')">8</button>
+    <button onclick="press('9')">9</button>
+    <button onclick="press('/')">/</button>
+    <button onclick="press('4')">4</button>
+    <button onclick="press('5')">5</button>
+    <button onclick="press('6')">6</button>
+    <button onclick="press('*')">*</button>
+    <button onclick="press('1')">1</button>
+    <button onclick="press('2')">2</button>
+    <button onclick="press('3')">3</button>
+    <button onclick="press('-')">-</button>
+    <button onclick="press('0')">0</button>
+    <button onclick="clearDisplay()">C</button>
+    <button onclick="equals()">=</button>
+    <button onclick="press('+')">+</button>
+  </div>
+
+  <script>
+    let display = document.getElementById("display");
+    let code = "";
+
+    function press(val) {
+      display.value += val;
+      code += val;
+    }
+
+    function clearDisplay() {
+      display.value = "";
+      code = "";
+    }
+
+    function equals() {
+      if (code === "0304") {
+        localStorage.setItem("accessGranted", "true");
+        window.location.href = "index.html";
+      } else {
+        alert("Wrong password!");
+        clearDisplay();
+      }
+    }
+  </script>
+</body>
+</html>

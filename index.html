@@ -5,59 +5,58 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Calculatorr</title>
   <style>
-    body {
-      font-family: Arial, Helvetica, sans-serif;
-      background: #f4f4f4;
-      color: #222;
-      height: 100vh;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+    body{background:#f4f4f4;color:#222;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    #calculator{width:320px;padding:18px;background:#000;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);display:grid;grid-template-columns:repeat(4,1fr);grid-gap:10px}
+    #calc-display{grid-column:1/5;background:#111;color:#0f0;padding:14px;border-radius:10px;font-size:28px;text-align:right;min-height:56px;overflow:hidden}
+    .btn{height:64px;border-radius:12px;border:none;background:#333;color:#fff;font-size:20px;cursor:pointer}
+    .btn:hover{background:#444}
+    .op{background:#ff9500}
+    .op:hover{background:#ffa733}
+    #equal{background:#0078ff}
+    #clearCalc{background:#d32f2f}
+    #chatContainer{display:none;width:360px;height:640px;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.2);background:#fff;flex-direction:column}
+    #onlineBox{background:#0078ff;color:#fff;padding:10px;font-size:14px}
+    #lastSeen{padding:6px 10px;font-size:13px;color:#333;background:#f1f7ff}
+    #chatBox{flex:1;padding:12px;overflow:auto;display:flex;flex-direction:column;gap:8px;background:#fafafa}
+    .message{max-width:78%;padding:10px;border-radius:10px;background:#eee;align-self:flex-start;word-wrap:break-word}
+    .self{background:#0078ff;color:white;align-self:flex-end}
+    .meta{font-size:11px;color:rgba(0,0,0,0.6);margin-top:6px;text-align:right}
+    .ticks{margin-left:6px;font-size:12px;opacity:.85}
+    #typing{padding:6px 12px;color:#666;font-size:13px;height:20px}
+    #inputRow{display:flex;align-items:center;gap:6px;padding:8px;background:#fff;border-top:1px solid #eee;flex-wrap:nowrap}
+    #messageInput{flex:1;padding:9px;border-radius:8px;border:1px solid #ccc;font-size:14px}
+    #sendBtn,#clearBtn,#emergencyBtn{padding:9px 12px;border-radius:8px;border:none;background:#0078ff;color:#fff;cursor:pointer;flex-shrink:0}
+    #clearBtn{background:#9e9e9e;color:#000}
+    #emergencyBtn{background:#d32f2f;font-weight:bold}
+    @media (max-width:400px){
+      #chatContainer{width:94vw;height:86vh}
+      #calculator{width:94vw}
+      #inputRow{flex-wrap:wrap;gap:4px}
+      #messageInput{width:100%}
     }
-    #calculator, #chatContainer { width: 320px; background: white; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.2); overflow: hidden; }
-    #display { width: 100%; height: 60px; font-size: 24px; text-align: right; padding: 10px; border: none; background: #222; color: #0f0; }
-    .keys { display: grid; grid-template-columns: repeat(4, 1fr); }
-    .keys button { font-size: 20px; padding: 20px; border: 1px solid #ccc; background: #f9f9f9; cursor: pointer; }
-    .keys button:hover { background: #ddd; }
-    .hidden { display: none !important; }
-
-    /* Chat UI */
-    #chatContainer { display: flex; flex-direction: column; height: 500px; }
-    #onlineBox { font-size: 13px; padding: 8px 10px; color: gray; border-bottom: 1px solid rgba(0,0,0,0.05); }
-    #lastSeen { font-size: 12px; color: #777; font-style: italic; padding: 0 10px 4px; }
-    #chatBox { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; }
-    .message { margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: #e8e8e8; max-width: 80%; align-self: flex-start; position: relative; }
-    .self { background: #0078ff; color: #fff; align-self: flex-end; }
-    .meta { font-size: 11px; opacity: .7; margin-top: 4px; text-align: right; }
-    #typing { font-size: 13px; color: gray; padding: 6px 10px; }
-    #inputBox { display: flex; padding: 10px; background: #eaeaea; }
-    #messageInput { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
-    button { padding: 8px 12px; margin-left: 6px; border: none; border-radius: 6px; background: #0078ff; color: #fff; cursor: pointer; }
-    #emergencyBtn { background: #d32f2f; }
   </style>
 </head>
 <body>
+
   <!-- Calculator -->
   <div id="calculator">
-    <input id="display" readonly />
-    <div class="keys">
-      <button>7</button><button>8</button><button>9</button><button>/</button>
-      <button>4</button><button>5</button><button>6</button><button>*</button>
-      <button>1</button><button>2</button><button>3</button><button>-</button>
-      <button>0</button><button>.</button><button id="clearCalc">C</button><button>+</button>
-      <button id="equals" style="grid-column: span 4; background:#0078ff;color:#fff;">=</button>
-    </div>
+    <div id="calc-display"></div>
+    <button class="btn">7</button><button class="btn">8</button><button class="btn">9</button><button class="btn op">/</button>
+    <button class="btn">4</button><button class="btn">5</button><button class="btn">6</button><button class="btn op">*</button>
+    <button class="btn">1</button><button class="btn">2</button><button class="btn">3</button><button class="btn op">-</button>
+    <button class="btn">0</button><button class="btn">.</button><button class="btn" id="equal">=</button><button class="btn op">+</button>
+    <button class="btn" id="clearCalc">C</button>
   </div>
 
   <!-- Chat -->
-  <div id="chatContainer" class="hidden">
+  <div id="chatContainer">
     <div id="onlineBox">Checking online...</div>
     <div id="lastSeen"></div>
     <div id="chatBox"></div>
     <div id="typing"></div>
-    <div id="inputBox">
-      <input id="messageInput" placeholder="Type a message..." />
+    <div id="inputRow">
+      <input id="messageInput" placeholder="Type a message..." autocomplete="off" />
       <button id="sendBtn">Send</button>
       <button id="clearBtn">Clear</button>
       <button id="emergencyBtn">🚨</button>
@@ -65,44 +64,10 @@
   </div>
 
   <script type="module">
-    // Calculator logic
-    const display = document.getElementById("display");
-    const keys = document.querySelectorAll(".keys button");
-    const calc = document.getElementById("calculator");
-    const chatContainer = document.getElementById("chatContainer");
-    const equals = document.getElementById("equals");
-    const clearCalc = document.getElementById("clearCalc");
-    let secret = "";
-
-    keys.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const val = btn.textContent;
-        if (val === "=") {
-          if (secret === "0304") {
-            calc.classList.add("hidden");
-            chatContainer.classList.remove("hidden");
-          } else {
-            try {
-              display.value = eval(display.value);
-            } catch { display.value = "Error"; }
-          }
-          secret = "";
-        } else if (val === "C") {
-          display.value = "";
-          secret = "";
-        } else {
-          display.value += val;
-          secret += val;
-          if (secret.length > 4) secret = secret.slice(-4);
-        }
-      });
-    });
-
-    clearCalc.addEventListener("click", () => { display.value = ""; secret = ""; });
-
-    // Firebase Chat Logic
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, set, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import {
+      getDatabase, ref, push, onValue, set, update, onDisconnect, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
@@ -117,121 +82,145 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    const onlineBox = document.getElementById("onlineBox");
-    const chatBox = document.getElementById("chatBox");
-    const typingDiv = document.getElementById("typing");
-    const input = document.getElementById("messageInput");
-    const sendBtn = document.getElementById("sendBtn");
-    const clearBtn = document.getElementById("clearBtn");
-    const emergencyBtn = document.getElementById("emergencyBtn");
-    const lastSeenDiv = document.getElementById("lastSeen");
+    const calculator=document.getElementById('calculator');
+    const calcDisplay=document.getElementById('calc-display');
+    const buttons=calculator.querySelectorAll('.btn');
+    const chatContainer=document.getElementById('chatContainer');
+    const chatBox=document.getElementById('chatBox');
+    const onlineBox=document.getElementById('onlineBox');
+    const lastSeenDiv=document.getElementById('lastSeen');
+    const typingDiv=document.getElementById('typing');
+    const messageInput=document.getElementById('messageInput');
+    const sendBtn=document.getElementById('sendBtn');
+    const clearBtn=document.getElementById('clearBtn');
+    const emergencyBtn=document.getElementById('emergencyBtn');
 
-    let username = localStorage.getItem("username");
-    if (!username) {
-      username = prompt("Enter your name:") || ("User" + Math.floor(Math.random()*999));
-      localStorage.setItem("username", username);
+    const SECRET='0304'; let calcValue='';
+    let username=localStorage.getItem('username');
+    if(!username){
+      username=prompt('Enter your name:')||('User'+Math.floor(Math.random()*999));
+      localStorage.setItem('username',username);
     }
 
-    // Presence
-    const presenceRef = ref(db, "presence/" + username);
-    async function setOnline() {
-      await set(presenceRef, { online: true, lastActive: Date.now() });
-      onDisconnect(presenceRef).set({ online: false, lastActive: Date.now() });
+    function time12(ts){
+      const d=new Date(ts);
+      let h=d.getHours();
+      const m=d.getMinutes().toString().padStart(2,'0');
+      const ampm=h>=12?'PM':'AM';
+      h=h%12||12;
+      return `${h}:${m} ${ampm}`;
     }
-    setOnline();
 
-    onValue(ref(db,'presence'), snap => {
-      const data = snap.val() || {};
-      const others = Object.keys(data).filter(k => k !== username);
-      if (others.length === 0) {
-        onlineBox.textContent = "Waiting for someone...";
-        lastSeenDiv.textContent = "";
-        return;
+    // --- Calculator logic ---
+    buttons.forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        const v=btn.textContent;
+        if(v==='C'){calcValue='';calcDisplay.textContent='';return;}
+        if(v==='='){
+          if(calcValue===SECRET){
+            calculator.style.display='none';
+            chatContainer.style.display='flex';
+            document.title='Calculatorr';
+            return;
+          }
+          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}
+          catch{calcDisplay.textContent='Error';calcValue='';}
+          return;
+        }
+        calcValue+=v;calcDisplay.textContent=calcValue;
+      });
+    });
+
+    window.addEventListener('load',()=>{calculator.style.display='grid';chatContainer.style.display='none';});
+    window.addEventListener('popstate',()=>{calculator.style.display='grid';chatContainer.style.display='none';});
+
+    // --- Presence ---
+    const presenceRef=ref(db,'presence/'+username);
+    set(presenceRef,{online:true,lastActive:serverTimestamp()});
+    onDisconnect(presenceRef).set({online:false,lastActive:serverTimestamp()});
+
+    onValue(ref(db,'presence'),snap=>{
+      const data=snap.val()||{};
+      const others=Object.keys(data).filter(k=>k!==username);
+      if(others.length===0){onlineBox.textContent='Waiting for someone...';lastSeenDiv.textContent='';return;}
+      let onlineNames=[], latestOffline=null, latestTime=0;
+      others.forEach(u=>{
+        if(data[u]?.online) onlineNames.push(u);
+        else if(data[u]?.lastActive && data[u].lastActive>latestTime){
+          latestOffline=u; latestTime=data[u].lastActive;
+        }
+      });
+      if(onlineNames.length>0){
+        onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');
+        lastSeenDiv.textContent='';
+      }else if(latestOffline){
+        onlineBox.textContent=latestOffline+' is offline';
+        lastSeenDiv.textContent='Last seen: '+time12(latestTime);
       }
-      const onlineNames = others.filter(n => data[n] && data[n].online);
-      if (onlineNames.length > 0) onlineBox.textContent = "🟢 Online: " + onlineNames.join(", ");
-      else onlineBox.textContent = "No one online";
+    });
 
-      let lastUser = null, lastTime = 0;
-      for (const u of others) {
-        const info = data[u];
-        if (info && info.lastActive && info.lastActive > lastTime) {
-          lastTime = info.lastActive; lastUser = u;
+    // --- Typing ---
+    let typingTimeout=null;
+    messageInput.addEventListener('input',()=>{
+      set(ref(db,'typing/'+username),true);
+      if(typingTimeout)clearTimeout(typingTimeout);
+      typingTimeout=setTimeout(()=>set(ref(db,'typing/'+username),false),1200);
+    });
+
+    onValue(ref(db,'typing'),snap=>{
+      const t=snap.val()||{};
+      const othersTyping=Object.keys(t).filter(u=>u!==username&&t[u]);
+      typingDiv.textContent=othersTyping.length?`${othersTyping.join(', ')} is typing...`:'';
+    });
+
+    // --- Messaging ---
+    sendBtn.addEventListener('click',sendMessage);
+    messageInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
+    function sendMessage(){
+      const text=messageInput.value.trim();
+      if(!text)return;
+      const msgRef=push(ref(db,'messages'));
+      set(msgRef,{sender:username,text,ts:Date.now(),time:time12(Date.now()),delivered:false,seenBy:{[username]:true}});
+      messageInput.value='';set(ref(db,'typing/'+username),false);
+    }
+
+    onValue(ref(db,'messages'),snap=>{
+      const data=snap.val()||{};
+      chatBox.innerHTML='';
+      const keys=Object.keys(data).sort((a,b)=>(data[a].ts||0)-(data[b].ts||0));
+      for(const k of keys){
+        const m=data[k];
+        const el=document.createElement('div');
+        el.className='message'+(m.sender===username?' self':'');
+        let ticks='';
+        if(m.sender===username){
+          const seenCount=m.seenBy?Object.keys(m.seenBy).filter(u=>u!==username).length:0;
+          if(seenCount>0)ticks='💙';else if(m.delivered)ticks='✓✓';else ticks='✓';
+        }
+        el.innerHTML=`<div><strong>${m.sender}:</strong> ${m.text}</div><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div>`;
+        chatBox.appendChild(el);
+      }
+      chatBox.scrollTop=chatBox.scrollHeight;
+      for(const k of keys){
+        const m=data[k];
+        if(m.sender!==username){
+          if(!m.delivered)update(ref(db,'messages/'+k),{delivered:true});
+          if(!m.seenBy||!m.seenBy[username])set(ref(db,'messages/'+k+'/seenBy/'+username),true);
         }
       }
-      if (lastUser && lastTime) lastSeenDiv.textContent = "Last seen (" + lastUser + "): " + time12(lastTime);
-      else lastSeenDiv.textContent = "";
     });
 
-    function time12(ts) {
-      const d = new Date(ts);
-      let h = d.getHours(), m = d.getMinutes();
-      const ampm = h >= 12 ? "PM" : "AM";
-      h = h % 12 || 12;
-      return `${h}:${m.toString().padStart(2, "0")} ${ampm}`;
-    }
-
-    // Typing
-    let typingTimeout;
-    input.addEventListener("input", () => {
-      set(ref(db, "typing/" + username), true);
-      clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => set(ref(db, "typing/" + username), false), 1200);
-    });
-    onValue(ref(db, "typing"), snap => {
-      const data = snap.val() || {};
-      const others = Object.keys(data).filter(n => n !== username && data[n]);
-      typingDiv.textContent = others.length ? `${others.join(", ")} is typing...` : "";
+    // --- Clear & Emergency ---
+    clearBtn.addEventListener('click',()=>{localStorage.setItem('clearedAt',Date.now());chatBox.innerHTML='';});
+    emergencyBtn.addEventListener('click',()=>{
+      localStorage.setItem('clearedAt',Date.now());
+      chatBox.innerHTML='';
+      chatContainer.style.display='none';
+      calculator.style.display='grid';
+      window.open('https://www.google.com/search?q=calculator','_blank');
     });
 
-    // Send message
-    sendBtn.addEventListener("click", () => {
-      const text = input.value.trim();
-      if (!text) return;
-      push(ref(db, "messages"), { sender: username, text, ts: Date.now(), seen: false });
-      input.value = "";
-      set(ref(db, "typing/" + username), false);
-    });
-
-    // Clear local
-    clearBtn.addEventListener("click", () => {
-      if (!confirm("Clear chat locally?")) return;
-      localStorage.setItem("chatClearedAt", Date.now());
-      chatBox.innerHTML = "";
-    });
-
-    // Emergency
-    emergencyBtn.addEventListener("click", () => {
-      push(ref(db, "messages"), { sender: "⚠️ System", text: username + " pressed EMERGENCY!", ts: Date.now() });
-      localStorage.setItem("chatClearedAt", Date.now());
-      chatBox.innerHTML = "";
-      window.open("https://www.google.com/search?q=calculator", "_blank");
-    });
-
-    // Display messages + seen ticks
-    onValue(ref(db, "messages"), snap => {
-      const clearedAt = Number(localStorage.getItem("chatClearedAt") || 0);
-      const data = snap.val() || {};
-      chatBox.innerHTML = "";
-      const list = Object.keys(data).map(k => ({ id: k, ...data[k] })).sort((a,b)=>a.ts-b.ts);
-      for (const msg of list) {
-        if (msg.ts <= clearedAt) continue;
-        const div = document.createElement("div");
-        div.className = "message" + (msg.sender === username ? " self" : "");
-        let ticks = "";
-        if (msg.sender === username) ticks = msg.seen ? "✓✓" : "✓";
-        div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}<div class="meta">${time12(msg.ts)} ${ticks}</div>`;
-        chatBox.appendChild(div);
-      }
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      // Mark others' messages as seen
-      for (const msg of list) {
-        if (msg.sender !== username && !msg.seen) {
-          set(ref(db, "messages/" + msg.id + "/seen"), true);
-        }
-      }
-    });
+    document.title='Calculatorr';
   </script>
 </body>
 </html>

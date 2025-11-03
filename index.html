@@ -78,9 +78,7 @@
     const calcDisplay = document.getElementById("calc-display");
     const chatBox = document.getElementById("chatBox");
     const onlineBox = document.getElementById("onlineBox");
-    const typingDiv = document.getElementById("typing");
     const input = document.getElementById("messageInput");
-
     const sendBtn = document.getElementById("sendBtn");
     const clearBtn = document.getElementById("clearBtn");
     const emergencyBtn = document.getElementById("emergencyBtn");
@@ -92,22 +90,39 @@
     // Hide chat initially
     showCalculator();
 
-    // Presence
+    // --- PRESENCE ---
     const presenceRef = ref(db, 'presence/' + username);
-    set(presenceRef, { online: true, lastActive: serverTimestamp() });
-    onDisconnect(presenceRef).set({ online: false, lastActive: serverTimestamp() });
+    set(presenceRef, { online: true, lastActive: Date.now() });
+    onDisconnect(presenceRef).set({ online: false, lastActive: Date.now() });
 
     onValue(ref(db, 'presence'), snap => {
       const data = snap.val() || {};
-      const online = Object.keys(data).filter(k => data[k].online);
-      onlineBox.textContent = "🟢 Online: " + (online.length ? online.join(", ") : "No one");
+      const online = [];
+      const offline = [];
+      Object.keys(data).forEach(k => {
+        const u = data[k];
+        if (u.online) online.push(k);
+        else if (u.lastActive) {
+          const t = new Date(u.lastActive);
+          offline.push(`${k} last seen ${pad(t.getHours())}:${pad(t.getMinutes())}`);
+        }
+      });
+      if (online.length) {
+        onlineBox.textContent = "🟢 Online: " + online.join(", ");
+      } else if (offline.length) {
+        onlineBox.textContent = offline.join(" • ");
+      } else {
+        onlineBox.textContent = "No one online";
+      }
     });
 
-    // Chat messages
+    // --- CHAT MESSAGES ---
     onValue(ref(db, 'messages'), snap => {
+      const clearedAt = Number(localStorage.getItem('clearedAt') || 0);
       chatBox.innerHTML = "";
       const data = snap.val() || {};
       Object.values(data).sort((a,b)=>a.ts-b.ts).forEach(msg=>{
+        if ((msg.ts || 0) <= clearedAt) return;
         const div = document.createElement("div");
         div.className = "message" + (msg.sender === username ? " self" : "");
         div.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}<div class='meta'>${msg.time}</div>`;
@@ -119,11 +134,16 @@
     sendBtn.onclick = () => {
       const text = input.value.trim();
       if (!text) return;
-      push(ref(db, 'messages'), { sender: username, text, ts: Date.now(), time: new Date().toLocaleTimeString() });
+      const now = new Date();
+      const time = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      push(ref(db, 'messages'), { sender: username, text, ts: Date.now(), time });
       input.value = "";
     };
 
-    clearBtn.onclick = () => { chatBox.innerHTML = ""; };
+    clearBtn.onclick = () => {
+      localStorage.setItem('clearedAt', Date.now());
+      chatBox.innerHTML = "";
+    };
 
     emergencyBtn.onclick = () => {
       localStorage.clear();
@@ -131,7 +151,7 @@
       showCalculator();
     };
 
-    // Simple calculator
+    // --- CALCULATOR ---
     document.querySelectorAll(".calc-buttons button").forEach(btn => {
       btn.onclick = () => {
         const val = btn.textContent;
@@ -149,7 +169,6 @@
       };
     });
 
-    // Functions
     function showCalculator() {
       calcContainer.style.display = "flex";
       chatContainer.style.display = "none";
@@ -161,10 +180,10 @@
       chatContainer.style.display = "flex";
     }
 
-    // If page reload or back pressed → calculator
-    window.onbeforeunload = () => {
-      showCalculator();
-    };
+    // Back or reload → calculator
+    window.onbeforeunload = () => { showCalculator(); };
+
+    function pad(n){ return n < 10 ? "0"+n : n; }
   </script>
 </body>
 </html>

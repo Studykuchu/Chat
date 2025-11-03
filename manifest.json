@@ -3,14 +3,14 @@
   "short_name": "Chat",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#4CAF50",
+  "background_color": "#f4f4f4",
+  "theme_color": "#0078ff",
+  "gcm_sender_id": "978470856109",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "/icon.png",
       "sizes": "192x192",
       "type": "image/png"
     }
-  ],
-  "gcm_sender_id": "978470856109"
+  ]
 }

@@ -1,186 +1,156 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chat</title>
+  <title>Secret Chat</title>
   <style>
     body {
-      background: #121212;
-      color: white;
-      font-family: 'Poppins', sans-serif;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      color: #222;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
       height: 100vh;
       margin: 0;
-      padding: 0;
+      transition: 0.3s;
     }
-
-    #chat-container {
-      width: 90%;
-      max-width: 500px;
-      flex-grow: 1;
-      background: #1e1e1e;
-      border-radius: 15px;
-      padding: 15px;
-      margin-top: 20px;
-      overflow-y: auto;
-      box-shadow: 0 0 10px #000;
-    }
-
-    .message {
-      background: #2a2a2a;
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 10px;
-    }
-
-    .meta {
-      font-size: 12px;
-      color: gray;
-    }
-
-    #controls {
-      width: 90%;
-      max-width: 500px;
-      display: flex;
-      align-items: center;
-      margin: 10px 0;
-    }
-
-    input {
-      flex-grow: 1;
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      outline: none;
-      background: #2a2a2a;
-      color: white;
-    }
-
+    .dark { background-color: #121212; color: #eee; }
+    #chatBox { flex: 1; padding: 10px; overflow-y: auto; }
+    #inputBox { display: flex; padding: 10px; background: #ddd; }
+    #messageInput { flex: 1; padding: 8px; }
     button {
-      padding: 10px 15px;
+      padding: 8px 12px;
       margin-left: 5px;
       border: none;
-      border-radius: 10px;
-      background: #3a3a3a;
+      border-radius: 6px;
+      background-color: #4CAF50;
       color: white;
-      cursor: pointer;
     }
-
-    #online {
-      font-size: 13px;
-      color: #00ff6a;
-      margin-top: 10px;
-    }
-
-    #emergency {
-      background: #ff3333;
-      color: white;
-      margin-top: 10px;
-    }
+    #typing { font-size: 12px; color: gray; padding-left: 10px; }
+    #online { font-size: 12px; color: gray; padding-left: 10px; }
   </style>
 </head>
 <body>
-  <div id="chat-container"></div>
-
-  <div id="controls">
-    <input type="text" id="messageInput" placeholder="Type a message..." />
-    <button onclick="sendMessage()">Send</button>
+  <div id="chatBox"></div>
+  <div id="typing"></div>
+  <div id="online"></div>
+  <div id="inputBox">
+    <input id="messageInput" type="text" placeholder="Type a message...">
+    <button id="sendBtn">Send</button>
+    <button id="clearBtn">Clear</button>
+    <button id="emergencyBtn">🚨</button>
+    <button id="toggleBtn">🌙</button>
   </div>
 
-  <div id="online">🟢 Checking online...</div>
-  <button id="emergency" onclick="triggerEmergency()">🚨 Emergency</button>
-
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue, remove, set, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // 🚫 Secure access check
-    if (localStorage.getItem("accessGranted") !== "true") {
-      window.location.href = "calculator.html";
-    }
-
-    // ✅ Firebase Config
+    // 🔹 Firebase config
     const firebaseConfig = {
-      apiKey: "AIzaSyBqAN2xwhpH5kVybIeqbSkbZr1z7q5pEyQ",
-      authDomain: "chat-room-secret.firebaseapp.com",
-      databaseURL: "https://chat-room-secret-default-rtdb.firebaseio.com",
-      projectId: "chat-room-secret",
-      storageBucket: "chat-room-secret.appspot.com",
+      apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
+      authDomain: "chat-ab2b7.firebaseapp.com",
+      projectId: "chat-ab2b7",
+      storageBucket: "chat-ab2b7.firebasestorage.app",
       messagingSenderId: "978470856109",
-      appId: "1:978470856109:web:12345abcd"
+      appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const chatRef = ref(db, "messages");
-    const onlineRef = ref(db, "online");
 
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("messageInput");
-    const onlineStatus = document.getElementById("online");
+    // 🔹 User setup
+    let username = localStorage.getItem("username");
+    if (!username) {
+      username = prompt("Enter your name:");
+      localStorage.setItem("username", username);
+    }
 
-    const username = localStorage.getItem("username") || prompt("Enter your name:");
-    localStorage.setItem("username", username);
+    // 🔹 Elements
+    const chatBox = document.getElementById("chatBox");
+    const input = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const typingDiv = document.getElementById("typing");
+    const toggleBtn = document.getElementById("toggleBtn");
+    const emergencyBtn = document.getElementById("emergencyBtn");
+    const onlineDiv = document.getElementById("online");
 
-    // ✅ Mark user online
-    const userRef = ref(db, `online/${username}`);
+    // 🔹 Redirect to calculator if page reload or back pressed
+    window.onbeforeunload = () => { window.location.href = "calculator.html"; };
+
+    // 🔹 Online tracking
+    const userRef = ref(db, "online/" + username);
     set(userRef, true);
-    onDisconnect(userRef).remove();
+    window.addEventListener("beforeunload", () => remove(userRef));
 
-    // 🔁 Redirect to calculator if back or reload
-    window.addEventListener("popstate", () => {
-      localStorage.removeItem("accessGranted");
-      window.location.href = "calculator.html";
+    onValue(ref(db, "online"), (snapshot) => {
+      const data = snapshot.val() || {};
+      const onlineUsers = Object.keys(data).filter(u => data[u]);
+      onlineDiv.textContent = "🟢 Online: " + onlineUsers.join(", ");
     });
 
-    window.addEventListener("beforeunload", () => {
-      localStorage.removeItem("accessGranted");
-    });
-
-    // ✅ Online users
-    onValue(onlineRef, (snapshot) => {
-      const users = snapshot.val();
-      const onlineUsers = users ? Object.keys(users).join(", ") : "None";
-      onlineStatus.textContent = `🟢 Online: ${onlineUsers}`;
-    });
-
-    // ✅ Load messages
-    onValue(chatRef, (snapshot) => {
-      chatContainer.innerHTML = "";
-      const data = snapshot.val();
-      if (data) {
-        Object.values(data).forEach((msg) => {
-          const div = document.createElement("div");
-          div.classList.add("message");
-          div.innerHTML = `<strong>${msg.name}:</strong> ${msg.text}<div class='meta'>${msg.time}</div>`;
-          chatContainer.appendChild(div);
-        });
-      }
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    });
-
-    // ✅ Send message
-    window.sendMessage = function() {
-      const text = messageInput.value.trim();
-      if (text === "") return;
-      const now = new Date();
-      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      push(chatRef, { name: username, text, time });
-      messageInput.value = "";
+    // 🔹 Dark mode toggle
+    toggleBtn.onclick = () => {
+      document.body.classList.toggle("dark");
+      toggleBtn.textContent = document.body.classList.contains("dark") ? "☀️" : "🌙";
     };
 
-    // ✅ Emergency
-    window.triggerEmergency = function() {
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      push(chatRef, { name: "⚠️ SYSTEM", text: `${username} pressed EMERGENCY!`, time: now });
-      remove(chatRef).then(() => {
-        localStorage.removeItem("accessGranted");
-        window.location.href = "calculator.html";
+    // 🔹 Send message
+    sendBtn.onclick = () => {
+      const text = input.value.trim();
+      if (text) {
+        push(ref(db, "messages"), {
+          sender: username,
+          text,
+          time: new Date().toLocaleTimeString(),
+          timestamp: Date.now()
+        });
+        input.value = "";
+      }
+    };
+
+    // 🔹 Typing indicator
+    let typingTimeout;
+    input.addEventListener("input", () => {
+      set(ref(db, "typing/" + username), true);
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => set(ref(db, "typing/" + username), false), 1000);
+    });
+    onValue(ref(db, "typing"), (snapshot) => {
+      const data = snapshot.val() || {};
+      const others = Object.keys(data).filter(name => name !== username && data[name]);
+      typingDiv.textContent = others.length ? `${others.join(", ")} is typing...` : "";
+    });
+
+    // 🔹 Load messages
+    onValue(ref(db, "messages"), (snapshot) => {
+      chatBox.innerHTML = "";
+      snapshot.forEach(child => {
+        const msg = child.val();
+        const div = document.createElement("div");
+        div.textContent = `${msg.sender} (${msg.time}): ${msg.text}`;
+        chatBox.appendChild(div);
       });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // 🔹 Clear chat
+    clearBtn.onclick = () => {
+      localStorage.setItem("chatClearedAt", Date.now());
+      chatBox.innerHTML = "";
+    };
+
+    // 🔹 Emergency button
+    emergencyBtn.onclick = async () => {
+      await push(ref(db, "messages"), {
+        sender: "SYSTEM",
+        text: `${username} pressed EMERGENCY BUTTON!`,
+        time: new Date().toLocaleTimeString(),
+        timestamp: Date.now()
+      });
+      window.location.href = "calculator.html";
     };
   </script>
 </body>

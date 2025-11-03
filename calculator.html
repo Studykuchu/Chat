@@ -3,94 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calculator</title>
+  <title>Access Panel</title>
   <style>
     body {
-      font-family: 'Poppins', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background: #121212;
+      background: #0f0f0f;
       color: white;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
     }
-    #calc {
-      display: grid;
-      grid-template-columns: repeat(4, 70px);
-      gap: 10px;
+    .calculator {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 10px;
     }
     input {
       grid-column: span 4;
-      height: 60px;
+      height: 50px;
+      font-size: 22px;
       text-align: right;
-      font-size: 24px;
       border: none;
-      border-radius: 8px;
-      background: #2a2a2a;
-      color: white;
-      padding-right: 10px;
+      background: #333;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
     }
     button {
-      height: 60px;
+      height: 50px;
+      font-size: 18px;
       border: none;
-      border-radius: 8px;
-      font-size: 20px;
-      background: #3a3a3a;
+      border-radius: 6px;
+      background: #4CAF50;
       color: white;
       cursor: pointer;
     }
     button:hover {
-      background: #555;
+      background: #45a049;
     }
   </style>
 </head>
 <body>
-  <div id="calc">
-    <input id="display" disabled />
-    <button onclick="press('7')">7</button>
-    <button onclick="press('8')">8</button>
-    <button onclick="press('9')">9</button>
-    <button onclick="press('/')">/</button>
-    <button onclick="press('4')">4</button>
-    <button onclick="press('5')">5</button>
-    <button onclick="press('6')">6</button>
-    <button onclick="press('*')">*</button>
-    <button onclick="press('1')">1</button>
-    <button onclick="press('2')">2</button>
-    <button onclick="press('3')">3</button>
-    <button onclick="press('-')">-</button>
-    <button onclick="press('0')">0</button>
-    <button onclick="clearDisplay()">C</button>
-    <button onclick="equals()">=</button>
-    <button onclick="press('+')">+</button>
+  <h2>Calculator</h2>
+  <div class="calculator">
+    <input type="text" id="display" disabled />
+    <button>7</button><button>8</button><button>9</button><button>/</button>
+    <button>4</button><button>5</button><button>6</button><button>*</button>
+    <button>1</button><button>2</button><button>3</button><button>-</button>
+    <button>0</button><button>.</button><button id="equal">=</button><button>+</button>
   </div>
 
   <script>
-    let display = document.getElementById("display");
-    let code = "";
-
-    function press(val) {
-      display.value += val;
-      code += val;
-    }
-
-    function clearDisplay() {
-      display.value = "";
-      code = "";
-    }
-
-    function equals() {
-      if (code === "0304") {
-        localStorage.setItem("accessGranted", "true");
-        window.location.href = "index.html";
-      } else {
-        alert("Wrong password!");
-        clearDisplay();
-      }
-    }
+    const display = document.getElementById("display");
+    document.querySelectorAll("button").forEach(btn => {
+      btn.onclick = () => {
+        if (btn.id === "equal") {
+          if (display.value === "0304") {
+            window.location.href = "index.html"; // ✅ open chat page
+          } else {
+            alert("Incorrect Password!");
+            display.value = "";
+          }
+        } else {
+          display.value += btn.textContent;
+        }
+      };
+    });
   </script>
 </body>
 </html>

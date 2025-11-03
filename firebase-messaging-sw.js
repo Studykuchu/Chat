@@ -1,4 +1,4 @@
-// firebase-messaging-sw.js (put at repo root)
+// firebase-messaging-sw.js  (save in repo root)
 importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/11.0.1/firebase-messaging-compat.js");
 
@@ -13,7 +13,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// background message handler
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   const notification = payload.notification || {};

@@ -32,14 +32,11 @@
     @media (max-width:400px){
       #chatContainer{width:94vw;height:86vh}
       #calculator{width:94vw}
-      #inputRow{flex-wrap:wrap;gap:4px}
-      #messageInput{width:100%}
     }
   </style>
 </head>
 <body>
 
-  <!-- Calculator -->
   <div id="calculator">
     <div id="calc-display"></div>
     <button class="btn">7</button><button class="btn">8</button><button class="btn">9</button><button class="btn op">/</button>
@@ -49,7 +46,6 @@
     <button class="btn" id="clearCalc">C</button>
   </div>
 
-  <!-- Chat -->
   <div id="chatContainer">
     <div id="onlineBox">Checking online...</div>
     <div id="lastSeen"></div>
@@ -58,16 +54,15 @@
     <div id="inputRow">
       <input id="messageInput" placeholder="Type a message..." autocomplete="off" />
       <button id="sendBtn">Send</button>
-      <button id="clearBtn">Clear</button>
+      <!-- swapped order -->
       <button id="emergencyBtn">🚨</button>
+      <button id="clearBtn">Clear</button>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import {
-      getDatabase, ref, push, onValue, set, update, onDisconnect, serverTimestamp
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, push, onValue, set, update, onDisconnect, serverTimestamp, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
@@ -85,6 +80,8 @@
     const calculator=document.getElementById('calculator');
     const calcDisplay=document.getElementById('calc-display');
     const buttons=calculator.querySelectorAll('.btn');
+    const equalBtn=document.getElementById('equal');
+    const clearCalc=document.getElementById('clearCalc');
     const chatContainer=document.getElementById('chatContainer');
     const chatBox=document.getElementById('chatBox');
     const onlineBox=document.getElementById('onlineBox');
@@ -95,23 +92,13 @@
     const clearBtn=document.getElementById('clearBtn');
     const emergencyBtn=document.getElementById('emergencyBtn');
 
-    const SECRET='0304'; let calcValue='';
+    const SECRET='0304'; 
+    let calcValue='';
     let username=localStorage.getItem('username');
-    if(!username){
-      username=prompt('Enter your name:')||('User'+Math.floor(Math.random()*999));
-      localStorage.setItem('username',username);
-    }
+    if(!username){username=prompt('Enter your name:')||('User'+Math.floor(Math.random()*999));localStorage.setItem('username',username);}
 
-    function time12(ts){
-      const d=new Date(ts);
-      let h=d.getHours();
-      const m=d.getMinutes().toString().padStart(2,'0');
-      const ampm=h>=12?'PM':'AM';
-      h=h%12||12;
-      return `${h}:${m} ${ampm}`;
-    }
+    function time12(ts){const d=new Date(ts);let h=d.getHours();const m=d.getMinutes().toString().padStart(2,'0');const ampm=h>=12?'PM':'AM';h=h%12||12;return `${h}:${m} ${ampm}`;}
 
-    // --- Calculator logic ---
     buttons.forEach(btn=>{
       btn.addEventListener('click',()=>{
         const v=btn.textContent;
@@ -120,60 +107,83 @@
           if(calcValue===SECRET){
             calculator.style.display='none';
             chatContainer.style.display='flex';
-            document.title='Calculatorr';
+            attachChatListeners();
             return;
           }
-          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}
-          catch{calcDisplay.textContent='Error';calcValue='';}
+          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}catch{calcDisplay.textContent='Error';calcValue='';}
           return;
         }
         calcValue+=v;calcDisplay.textContent=calcValue;
       });
     });
 
-    window.addEventListener('load',()=>{calculator.style.display='grid';chatContainer.style.display='none';});
-    window.addEventListener('popstate',()=>{calculator.style.display='grid';chatContainer.style.display='none';});
+    clearCalc.addEventListener('click',()=>{calcValue='';calcDisplay.textContent='';});
 
-    // --- Presence ---
     const presenceRef=ref(db,'presence/'+username);
     set(presenceRef,{online:true,lastActive:serverTimestamp()});
     onDisconnect(presenceRef).set({online:false,lastActive:serverTimestamp()});
 
-    onValue(ref(db,'presence'),snap=>{
-      const data=snap.val()||{};
-      const others=Object.keys(data).filter(k=>k!==username);
-      if(others.length===0){onlineBox.textContent='Waiting for someone...';lastSeenDiv.textContent='';return;}
-      let onlineNames=[], latestOffline=null, latestTime=0;
-      others.forEach(u=>{
-        if(data[u]?.online) onlineNames.push(u);
-        else if(data[u]?.lastActive && data[u].lastActive>latestTime){
-          latestOffline=u; latestTime=data[u].lastActive;
+    let messagesListener=null, typingListener=null, presenceListener=null;
+
+    function attachChatListeners(){
+      if(messagesListener) return;
+
+      presenceListener = onValue(ref(db,'presence'),snap=>{
+        const data=snap.val()||{};
+        const others=Object.keys(data).filter(k=>k!==username);
+        const onlineNames=others.filter(n=>data[n]&&data[n].online);
+        if(onlineNames.length){onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');lastSeenDiv.textContent='';}
+        else{
+          let lastUser=null,lastTime=0;
+          for(const u of others){
+            if(data[u]?.lastActive>lastTime){
+              lastUser=u;
+              lastTime=data[u].lastActive;
+            }
+          }
+          if(lastUser) lastSeenDiv.textContent='Last seen ('+lastUser+'): '+time12(lastTime);
+          else lastSeenDiv.textContent='';
+          onlineBox.textContent='No one online';
         }
       });
-      if(onlineNames.length>0){
-        onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');
-        lastSeenDiv.textContent='';
-      }else if(latestOffline){
-        onlineBox.textContent=latestOffline+' is offline';
-        lastSeenDiv.textContent='Last seen: '+time12(latestTime);
-      }
-    });
 
-    // --- Typing ---
-    let typingTimeout=null;
+      typingListener = onValue(ref(db,'typing'),snap=>{
+        const t=snap.val()||{};
+        const othersTyping=Object.keys(t).filter(u=>u!==username&&t[u]);
+        typingDiv.textContent=othersTyping.length?`${othersTyping.join(', ')} is typing...`:'';
+      });
+
+      messagesListener = onValue(ref(db,'messages'),snap=>{
+        const data=snap.val()||{};
+        chatBox.innerHTML='';
+        const keys=Object.keys(data).sort((a,b)=>(data[a].ts||0)-(data[b].ts||0));
+        for(const k of keys){
+          const m=data[k];
+          const el=document.createElement('div');
+          el.className='message'+(m.sender===username?' self':'');
+          let ticks='';
+          if(m.sender===username){
+            const seenCount=m.seenBy?Object.keys(m.seenBy).filter(u=>u!==username).length:0;
+            if(seenCount>0)ticks='💙';else if(m.delivered)ticks='✓✓';else ticks='✓';
+          }
+          el.innerHTML=`<div><strong>${m.sender}:</strong> ${m.text}</div><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div>`;
+          chatBox.appendChild(el);
+        }
+        chatBox.scrollTop=chatBox.scrollHeight;
+      });
+    }
+
+    function detachChatListeners(){
+      off(ref(db,'presence'));
+      off(ref(db,'typing'));
+      off(ref(db,'messages'));
+      messagesListener=typingListener=presenceListener=null;
+    }
+
     messageInput.addEventListener('input',()=>{
-      set(ref(db,'typing/'+username),true);
-      if(typingTimeout)clearTimeout(typingTimeout);
-      typingTimeout=setTimeout(()=>set(ref(db,'typing/'+username),false),1200);
+      set(ref(db,'typing/'+username),messageInput.value.trim()!=='');
     });
 
-    onValue(ref(db,'typing'),snap=>{
-      const t=snap.val()||{};
-      const othersTyping=Object.keys(t).filter(u=>u!==username&&t[u]);
-      typingDiv.textContent=othersTyping.length?`${othersTyping.join(', ')} is typing...`:'';
-    });
-
-    // --- Messaging ---
     sendBtn.addEventListener('click',sendMessage);
     messageInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
     function sendMessage(){
@@ -181,43 +191,21 @@
       if(!text)return;
       const msgRef=push(ref(db,'messages'));
       set(msgRef,{sender:username,text,ts:Date.now(),time:time12(Date.now()),delivered:false,seenBy:{[username]:true}});
-      messageInput.value='';set(ref(db,'typing/'+username),false);
+      messageInput.value='';
+      set(ref(db,'typing/'+username),false);
     }
 
-    onValue(ref(db,'messages'),snap=>{
-      const data=snap.val()||{};
+    clearBtn.addEventListener('click',()=>{
       chatBox.innerHTML='';
-      const keys=Object.keys(data).sort((a,b)=>(data[a].ts||0)-(data[b].ts||0));
-      for(const k of keys){
-        const m=data[k];
-        const el=document.createElement('div');
-        el.className='message'+(m.sender===username?' self':'');
-        let ticks='';
-        if(m.sender===username){
-          const seenCount=m.seenBy?Object.keys(m.seenBy).filter(u=>u!==username).length:0;
-          if(seenCount>0)ticks='💙';else if(m.delivered)ticks='✓✓';else ticks='✓';
-        }
-        el.innerHTML=`<div><strong>${m.sender}:</strong> ${m.text}</div><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div>`;
-        chatBox.appendChild(el);
-      }
-      chatBox.scrollTop=chatBox.scrollHeight;
-      for(const k of keys){
-        const m=data[k];
-        if(m.sender!==username){
-          if(!m.delivered)update(ref(db,'messages/'+k),{delivered:true});
-          if(!m.seenBy||!m.seenBy[username])set(ref(db,'messages/'+k+'/seenBy/'+username),true);
-        }
-      }
     });
 
-    // --- Clear & Emergency ---
-    clearBtn.addEventListener('click',()=>{localStorage.setItem('clearedAt',Date.now());chatBox.innerHTML='';});
     emergencyBtn.addEventListener('click',()=>{
-      localStorage.setItem('clearedAt',Date.now());
+      detachChatListeners();
       chatBox.innerHTML='';
       chatContainer.style.display='none';
       calculator.style.display='grid';
-      window.open('https://www.google.com/search?q=calculator','_blank');
+      calcValue='';
+      calcDisplay.textContent='';
     });
 
     document.title='Calculatorr';

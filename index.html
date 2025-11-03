@@ -51,8 +51,9 @@
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+
 <script>
-/* ==== 1.  YOUR FIREBASE CONFIG  ==== */
+/* ==== 1.  FIREBASE CONFIG (YOUR PROJECT) ==== */
 const firebaseConfig = {
   apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
   authDomain: "chat-ab2b7.firebaseapp.com",
@@ -67,7 +68,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const auth = firebase.auth();
 
-/* ==== 2.  GLOBALS  ==== */
+/* ==== 2.  DOM ELEMENTS ==== */
 const display = document.getElementById('display');
 const buttons = document.querySelectorAll('.btns button');
 const calcDiv = document.getElementById('calc');
@@ -78,16 +79,17 @@ const sendBtn = document.getElementById('sendBtn');
 const statusSpan = document.getElementById('status');
 const emergencyBtn = document.getElementById('emergency');
 
+/* ==== 3.  GLOBALS ==== */
 let expr = '', name = localStorage.getItem('chat_name'), uid=null;
 const secret = '0304';
 
-/* ==== 3.  ASK NAME  ==== */
+/* ==== 4.  ASK NAME ==== */
 if(!name){
   name = prompt('Enter your name:') || 'Anonymous';
   localStorage.setItem('chat_name', name);
 }
 
-/* ==== 4.  Calculator  ==== */
+/* ==== 5.  CALCULATOR ==== */
 buttons.forEach(b=>{
   b.onclick=()=>{
     const val=b.textContent;
@@ -104,7 +106,7 @@ buttons.forEach(b=>{
   };
 });
 
-/* ==== 5.  Chat + Firebase ==== */
+/* ==== 6.  CHAT + FIREBASE ==== */
 auth.signInAnonymously().catch(console.error);
 auth.onAuthStateChanged(u=>{
   if(!u) return;
@@ -112,12 +114,14 @@ auth.onAuthStateChanged(u=>{
   const presRef=db.ref('presence/'+uid);
   presRef.set({name,online:true,lastSeen:Date.now()});
   presRef.onDisconnect().set({name,online:false,lastSeen:Date.now()});
+
   db.ref('presence').on('value',snap=>{
     const val=snap.val()||{};
     const onlineUsers=Object.values(val).filter(p=>p.online&&p.name!==name);
     const onlineNames=onlineUsers.map(o=>o.name).join(', ')||'No one online';
     statusSpan.textContent='Online: '+onlineNames;
   });
+
   db.ref('messages').on('child_added',snap=>{
     const m=snap.val();
     addMsg(m);
@@ -142,7 +146,7 @@ function addMsg(m){
   messagesDiv.scrollTop=messagesDiv.scrollHeight;
 }
 
-/* ==== 6.  Emergency ==== */
+/* ==== 7.  EMERGENCY BUTTON ==== */
 emergencyBtn.onclick=()=>{
   chatDiv.style.display='none';
   calcDiv.style.display='block';
@@ -150,13 +154,13 @@ emergencyBtn.onclick=()=>{
   display.textContent='0';
 };
 
-/* ==== 7.  Secret toggle ==== */
+/* ==== 8.  SHOW/HIDE ==== */
 function openChat(){
   calcDiv.style.display='none';
   chatDiv.style.display='flex';
 }
 
-/* ==== 8.  Always start with calculator ==== */
+/* ==== 9.  ALWAYS OPEN CALCULATOR ON RELOAD/BACK ==== */
 window.addEventListener('load', ()=>{
   chatDiv.style.display='none';
   calcDiv.style.display='block';

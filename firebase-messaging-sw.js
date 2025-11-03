@@ -14,8 +14,12 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  self.registration.showNotification(payload.notification.title, {
-    body: payload.notification.body,
-    icon: "https://cdn-icons-png.flaticon.com/512/1827/1827349.png"
-  });
+  console.log("[firebase-messaging-sw.js] Received background message ", payload);
+  const notificationTitle = payload.notification.title || "New Message";
+  const notificationOptions = {
+    body: payload.notification.body || "Someone sent a message.",
+    icon: "/icon.png"
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });

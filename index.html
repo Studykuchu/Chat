@@ -6,8 +6,8 @@
   <title>Calculatorr</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
-    body{background:#f4f4f4;color:#222;min-height:100vh;display:flex;align-items:center;justify-content:center}
-    #calculator{width:320px;padding:18px;background:#000;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);display:grid;grid-template-columns:repeat(4,1fr);grid-gap:10px}
+    body{background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    #calculator{width:320px;padding:18px;background:#000;border-radius:16px;display:grid;grid-template-columns:repeat(4,1fr);grid-gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
     #calc-display{grid-column:1/5;background:#111;color:#0f0;padding:14px;border-radius:10px;font-size:28px;text-align:right;min-height:56px;overflow:hidden}
     .btn{height:64px;border-radius:12px;border:none;background:#333;color:#fff;font-size:20px;cursor:pointer}
     .btn:hover{background:#444}
@@ -15,7 +15,7 @@
     .op:hover{background:#ffa733}
     #equal{background:#0078ff}
     #clearCalc{background:#d32f2f}
-    #chatContainer{display:none;width:360px;height:640px;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.2);background:#fff;flex-direction:column}
+    #chatContainer{display:none;width:360px;height:640px;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.2);background:#fff;flex-direction:column}
     #onlineBox{background:#0078ff;color:#fff;padding:10px;font-size:14px}
     #lastSeen{padding:6px 10px;font-size:13px;color:#333;background:#f1f7ff}
     #chatBox{flex:1;padding:12px;overflow:auto;display:flex;flex-direction:column;gap:8px;background:#fafafa}
@@ -23,17 +23,19 @@
     .self{background:#0078ff;color:white;align-self:flex-end}
     .meta{font-size:11px;color:rgba(0,0,0,0.6);margin-top:6px;text-align:right}
     .ticks{margin-left:6px;font-size:12px;opacity:.85}
+    img.chat-img{max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;transition:transform .2s}
+    img.chat-img:hover{transform:scale(1.03)}
     #typing{padding:6px 12px;color:#666;font-size:13px;height:20px}
     #inputRow{display:flex;align-items:center;gap:6px;padding:8px;background:#fff;border-top:1px solid #eee;flex-wrap:nowrap}
     #messageInput{flex:1;padding:9px;border-radius:8px;border:1px solid #ccc;font-size:14px}
     #sendBtn,#clearBtn,#emergencyBtn{padding:9px 12px;border-radius:8px;border:none;background:#0078ff;color:#fff;cursor:pointer;flex-shrink:0}
     #clearBtn{background:#9e9e9e;color:#000}
     #emergencyBtn{background:#d32f2f;font-weight:bold}
-    img.chat-img{max-width:200px;border-radius:8px;margin-top:4px}
-    @media (max-width:400px){
-      #chatContainer{width:94vw;height:86vh}
-      #calculator{width:94vw}
-    }
+    #attachBtn{background:#555;color:#fff;border:none;border-radius:8px;padding:9px;cursor:pointer}
+    #imageFullscreen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);align-items:center;justify-content:center;z-index:1000;flex-direction:column}
+    #imageFullscreen img{max-width:90%;max-height:85%;border-radius:12px;box-shadow:0 0 20px rgba(255,255,255,0.3)}
+    #closeFullscreen{margin-top:20px;padding:10px 18px;border:none;border-radius:8px;background:#d32f2f;color:#fff;font-size:16px;cursor:pointer}
+    @media(max-width:400px){#chatContainer{width:94vw;height:86vh}#calculator{width:94vw}}
   </style>
 </head>
 <body>
@@ -59,6 +61,12 @@
       <button id="emergencyBtn">🚨</button>
       <button id="clearBtn">Clear</button>
     </div>
+  </div>
+
+  <!-- fullscreen image viewer -->
+  <div id="imageFullscreen">
+    <img id="fullscreenImg" src="" alt="Full Image">
+    <button id="closeFullscreen">Exit Fullscreen</button>
   </div>
 
   <script type="module">
@@ -95,20 +103,30 @@
     const clearBtn=document.getElementById('clearBtn');
     const emergencyBtn=document.getElementById('emergencyBtn');
     const attachBtn=document.getElementById('attachBtn');
+    const fullscreen=document.getElementById('imageFullscreen');
+    const fullscreenImg=document.getElementById('fullscreenImg');
+    const closeFullscreen=document.getElementById('closeFullscreen');
 
     const fileInput=document.createElement('input');
     fileInput.type='file';
     fileInput.accept='image/*';
     fileInput.style.display='none';
     document.body.appendChild(fileInput);
+
     attachBtn.addEventListener('click',()=>fileInput.click());
+    closeFullscreen.addEventListener('click',()=>{fullscreen.style.display='none';fullscreenImg.src='';});
 
     const SECRET='0304'; 
     let calcValue='';
     let username=localStorage.getItem('username');
     if(!username){username=prompt('Enter your name:')||('User'+Math.floor(Math.random()*999));localStorage.setItem('username',username);}
 
-    function time12(ts){const d=new Date(ts);let h=d.getHours();const m=d.getMinutes().toString().padStart(2,'0');const ampm=h>=12?'PM':'AM';h=h%12||12;return `${h}:${m} ${ampm}`;}
+    function time12(ts){
+      const d=new Date(ts);let h=d.getHours();
+      const m=d.getMinutes().toString().padStart(2,'0');
+      const ampm=h>=12?'PM':'AM';h=h%12||12;
+      return `${h}:${m} ${ampm}`;
+    }
 
     buttons.forEach(btn=>{
       btn.addEventListener('click',()=>{
@@ -121,7 +139,8 @@
             attachChatListeners();
             return;
           }
-          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}catch{calcDisplay.textContent='Error';calcValue='';}
+          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}
+          catch{calcDisplay.textContent='Error';calcValue='';}
           return;
         }
         calcValue+=v;calcDisplay.textContent=calcValue;
@@ -143,14 +162,13 @@
         const data=snap.val()||{};
         const others=Object.keys(data).filter(k=>k!==username);
         const onlineNames=others.filter(n=>data[n]&&data[n].online);
-        if(onlineNames.length){onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');lastSeenDiv.textContent='';}
-        else{
+        if(onlineNames.length){
+          onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');
+          lastSeenDiv.textContent='';
+        } else {
           let lastUser=null,lastTime=0;
           for(const u of others){
-            if(data[u]?.lastActive>lastTime){
-              lastUser=u;
-              lastTime=data[u].lastActive;
-            }
+            if(data[u]?.lastActive>lastTime){lastUser=u;lastTime=data[u].lastActive;}
           }
           if(lastUser) lastSeenDiv.textContent='Last seen ('+lastUser+'): '+time12(lastTime);
           else lastSeenDiv.textContent='';
@@ -179,6 +197,11 @@
           }
           if(m.imageURL){
             el.innerHTML=`<div><strong>${m.sender}:</strong><br><img src="${m.imageURL}" class="chat-img"><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div></div>`;
+            const img=el.querySelector('img');
+            img.addEventListener('click',()=>{
+              fullscreenImg.src=m.imageURL;
+              fullscreen.style.display='flex';
+            });
           } else {
             el.innerHTML=`<div><strong>${m.sender}:</strong> ${m.text}</div><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div>`;
           }
@@ -201,6 +224,7 @@
 
     sendBtn.addEventListener('click',sendMessage);
     messageInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage();});
+
     function sendMessage(){
       const text=messageInput.value.trim();
       if(!text)return;
@@ -221,17 +245,13 @@
       e.target.value='';
     });
 
-    clearBtn.addEventListener('click',()=>{
-      chatBox.innerHTML='';
-    });
-
+    clearBtn.addEventListener('click',()=>{chatBox.innerHTML='';});
     emergencyBtn.addEventListener('click',()=>{
       detachChatListeners();
       chatBox.innerHTML='';
       chatContainer.style.display='none';
       calculator.style.display='grid';
-      calcValue='';
-      calcDisplay.textContent='';
+      calcValue='';calcDisplay.textContent='';
     });
 
     document.title='Calculatorr';

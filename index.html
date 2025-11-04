@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Calculatorr</title>
   <style>
-    /* UI kept identical to your last working design */
+    /* UI kept identical to your working design */
     *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
     body{background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}
     #calculator{width:320px;padding:18px;background:#000;border-radius:16px;display:grid;grid-template-columns:repeat(4,1fr);grid-gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
@@ -74,23 +74,32 @@
   </div>
 
   <script type="module">
-    // ---------- CONFIG ----------
-    // Temporary Imgur Client ID (can and should be replaced with your own)
-    // If you make your own Imgur app, paste your Client ID here (it is public).
-    const IMGUR_CLIENT_ID = '546f1b2c3d4e5f6'; // <--- temporary example ID; replace with your own for reliability
+    /**************************************************************************
+     * Final single-file app:
+     * - Calculator unlock (0304 =)
+     * - Chat with presence, typing, last seen, message ticks
+     * - Image upload -> Imgur (retry) -> fallback base64 into DB
+     * - Fullscreen image preview with Exit button
+     * - Anonymous Firebase Auth (enable in Console)
+     *
+     * Replace IMGUR_CLIENT_ID with your Imgur client id for reliability.
+     **************************************************************************/
 
-    // Firebase modular imports
+    // ---------- CONFIG ----------
+    const IMGUR_CLIENT_ID = '546f1b2c3d4e5f6'; // temporary example — replace with your own from https://api.imgur.com/oauth2/addclient
+
+    // Firebase imports (modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getDatabase, ref, push, onValue, set, update, onDisconnect, serverTimestamp, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // Your Firebase config (unchanged)
+    // Your firebase config (unchanged)
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
       databaseURL: "https://chat-ab2b7-default-rtdb.firebaseio.com/",
       projectId: "chat-ab2b7",
-      storageBucket: "", // not used
+      storageBucket: "",
       messagingSenderId: "978470856109",
       appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
@@ -100,11 +109,12 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    // ---------- DOM ----------
+    // DOM
     const calculator = document.getElementById('calculator');
     const calcDisplay = document.getElementById('calc-display');
     const buttons = calculator.querySelectorAll('.btn');
     const clearCalc = document.getElementById('clearCalc');
+
     const chatContainer = document.getElementById('chatContainer');
     const chatBox = document.getElementById('chatBox');
     const onlineBox = document.getElementById('onlineBox');
@@ -115,11 +125,12 @@
     const attachBtn = document.getElementById('attachBtn');
     const clearBtn = document.getElementById('clearBtn');
     const emergencyBtn = document.getElementById('emergencyBtn');
+
     const imageFullscreen = document.getElementById('imageFullscreen');
     const fullscreenImg = document.getElementById('fullscreenImg');
     const closeFullscreen = document.getElementById('closeFullscreen');
 
-    // hidden file input to pick image
+    // hidden file input
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*';
@@ -127,7 +138,7 @@
     document.body.appendChild(fileInput);
     attachBtn.addEventListener('click', ()=> fileInput.click());
 
-    // ---------- STATE ----------
+    // ---------- state ----------
     const SECRET = '0304';
     let calcValue = '';
     let username = localStorage.getItem('username');
@@ -140,7 +151,7 @@
 
     // ---------- helpers ----------
     function time12(ts) {
-      const d = new Date(ts);
+      const d = new Date(Number(ts));
       let h = d.getHours();
       const m = d.getMinutes().toString().padStart(2, '0');
       const ampm = h >= 12 ? 'PM' : 'AM';
@@ -149,9 +160,9 @@
     }
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-    // ---------- Calculator logic (unchanged UI) ----------
+    // ---------- Calculator logic ----------
     buttons.forEach(btn=>{
-      btn.addEventListener('click',()=>{
+      btn.addEventListener('click', ()=>{
         const v = btn.textContent;
         if (v === 'C') { calcValue=''; calcDisplay.textContent=''; return; }
         if (v === '=') {
@@ -171,12 +182,12 @@
     });
     clearCalc.addEventListener('click', ()=>{ calcValue=''; calcDisplay.textContent=''; });
 
-    // ---------- Auth: anonymous (so DB rules can require auth) ----------
+    // ---------- Auth (anonymous) ----------
     signInAnonymously(auth).catch(err => console.warn('Anonymous sign-in failed', err));
     onAuthStateChanged(auth, user => {
       if (user) {
         authUser = user;
-        // presence live while page open (works even on calculator)
+        // presence updated even when on calculator
         const presRef = ref(db, 'presence/' + username);
         set(presRef, { online: true, lastActive: serverTimestamp(), uid: user.uid }).catch(()=>{});
         onDisconnect(presRef).set({ online: false, lastActive: serverTimestamp(), uid: user.uid });
@@ -187,10 +198,11 @@
       }
     });
 
-    // ---------- Attach / detach listeners ----------
+    // ---------- Attach listeners (presence, typing, messages) ----------
     function attachChatListeners(){
       if (listenersAttached) return;
-      // presence
+
+      // PRESENCE
       onValue(ref(db,'presence'), snap => {
         const data = snap.val() || {};
         const others = Object.keys(data).filter(k => k !== username);
@@ -204,11 +216,12 @@
           onlineBox.textContent = '🟢 Online: ' + onlineNames.join(', ');
           lastSeenDiv.textContent = '';
         } else {
+          // find most recent lastActive among others
           let lastUser = null, lastTime = 0;
           for (const u of others) {
             const info = data[u];
             if (info && info.lastActive && info.lastActive > lastTime) {
-              lastUser = u; lastTime = info.lastActive;
+              lastTime = info.lastActive; lastUser = u;
             }
           }
           if (lastUser) {
@@ -221,20 +234,23 @@
         }
       });
 
-      // typing
+      // TYPING
       onValue(ref(db,'typing'), snap => {
         const t = snap.val() || {};
         const othersTyping = Object.keys(t).filter(k => k !== username && t[k]);
         typingDiv.textContent = othersTyping.length ? `${othersTyping.join(', ')} is typing...` : '';
       });
 
-      // messages
+      // MESSAGES
       onValue(ref(db,'messages'), snap => {
         const data = snap.val() || {};
         chatBox.innerHTML = '';
+        // respect local clear time
+        const clearedAt = Number(localStorage.getItem('clearedAt') || 0);
         const list = Object.keys(data).map(k => ({ id: k, ...data[k] })).sort((a,b)=> (a.ts||0)-(b.ts||0));
         for (const m of list) {
           if (!m) continue;
+          if ((m.ts || 0) <= clearedAt) continue;
           const el = document.createElement('div');
           el.className = 'message' + (m.sender === username ? ' self' : '');
           let ticks = '';
@@ -244,24 +260,24 @@
             else if (m.delivered) ticks = '✓✓';
             else ticks = '✓';
           }
-          if (m.imageURL) {
-            el.innerHTML = `<div><strong>${escapeHtml(m.sender)}:</strong><br><img src="${escapeHtml(m.imageURL)}" class="chat-img"><div class="meta">${escapeHtml(m.time||'')} &nbsp;<span class="ticks">${ticks}</span></div></div>`;
+          // show imageURL or fallback imageData
+          if (m.imageURL || m.imageData) {
+            const src = m.imageURL || m.imageData;
+            el.innerHTML = `<div><strong>${escapeHtml(m.sender)}:</strong><br><img src="${escapeHtml(src)}" class="chat-img"><div class="meta">${escapeHtml(m.time||'')} &nbsp;<span class="ticks">${ticks}</span></div></div>`;
           } else {
             el.innerHTML = `<div><strong>${escapeHtml(m.sender)}:</strong> ${escapeHtml(m.text||'')}<div class="meta">${escapeHtml(m.time||'')} &nbsp;<span class="ticks">${ticks}</span></div></div>`;
           }
           chatBox.appendChild(el);
 
-          // image preview click
-          if (m.imageURL) {
+          // attach preview handler
+          if (m.imageURL || m.imageData) {
             const img = el.querySelector('img');
-            if (img) img.addEventListener('click', ()=> {
-              fullscreenOpen(m.imageURL);
-            });
+            if (img) img.addEventListener('click', ()=> fullscreenOpen(m.imageURL || m.imageData));
           }
         }
         chatBox.scrollTop = chatBox.scrollHeight;
 
-        // mark delivered/seen for messages from others
+        // mark delivered and seen for messages from others
         for (const row of list) {
           if (!row) continue;
           if (row.sender !== username) {
@@ -286,7 +302,7 @@
       listenersAttached = false;
     }
 
-    // ---------- typing updater ----------
+    // ---------- typing indicator push ----------
     let typingTimeout = null;
     messageInput.addEventListener('input', ()=>{
       set(ref(db,'typing/'+username), messageInput.value.trim() !== '').catch(()=>{});
@@ -294,9 +310,9 @@
       typingTimeout = setTimeout(()=> set(ref(db,'typing/'+username), false).catch(()=>{}), 1200);
     });
 
-    // ---------- send text message ----------
+    // ---------- send message ----------
     sendBtn.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', e=>{ if (e.key === 'Enter') sendMessage(); });
+    messageInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
 
     function sendMessage(){
       const text = messageInput.value.trim();
@@ -314,52 +330,98 @@
       set(ref(db,'typing/'+username), false).catch(()=>{});
     }
 
-    // ---------- Imgur upload (anonymous) ----------
-    // Note: Imgur anonymous uploads accept a Client-ID in the Authorization header.
-    // We post FormData with the file and read response.data.link.
+    // ---------- robust Imgur upload + base64 fallback ----------
+    function fileToDataURL(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = () => rej(new Error('FileReader failed'));
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function tryImgurUploadOnce(file) {
+      const fd = new FormData();
+      fd.append('image', file);
+      const resp = await fetch('https://api.imgur.com/3/image', {
+        method: 'POST',
+        headers: { Authorization: 'Client-ID ' + IMGUR_CLIENT_ID },
+        body: fd
+      });
+      const json = await resp.json().catch(()=>null);
+      if (!resp.ok) {
+        throw new Error('Imgur non-OK: ' + resp.status + ' ' + JSON.stringify(json));
+      }
+      if (!json || !json.data || !json.data.link) throw new Error('Imgur unexpected response');
+      return json.data.link;
+    }
+
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (!IMGUR_CLIENT_ID || IMGUR_CLIENT_ID === '') {
-        alert('Missing Imgur Client ID. Replace IMGUR_CLIENT_ID in the code.');
-        return;
+      // optional size warning
+      const maxBytes = 4 * 1024 * 1024; // 4MB
+      if (file.size > maxBytes) {
+        if (!confirm('Image is large (' + Math.round(file.size/1024) + ' KB). Upload may be slow. Continue?')) {
+          e.target.value = '';
+          return;
+        }
       }
-      // show a small local placeholder message to indicate upload started (optional)
-      const placeholderRef = push(ref(db,'messages'));
+
+      console.log('Uploading image (Imgur -> fallback if needed)...', file.name, file.size);
+      let imgUrl = null;
       try {
-        // prepare form data
-        const fd = new FormData();
-        fd.append('image', file);
-        // upload to Imgur
-        const res = await fetch('https://api.imgur.com/3/image', {
-          method: 'POST',
-          headers: { Authorization: 'Client-ID ' + IMGUR_CLIENT_ID },
-          body: fd
-        });
-        const j = await res.json();
-        if (!j || !j.data || !j.data.link) throw new Error('Imgur upload failed');
-        const url = j.data.link;
-        // send message with image URL
+        // try once, if fails retry once
+        try { imgUrl = await tryImgurUploadOnce(file); }
+        catch (err1) {
+          console.warn('Imgur first attempt failed:', err1);
+          try { imgUrl = await tryImgurUploadOnce(file); }
+          catch (err2) { console.warn('Imgur second attempt failed:', err2); imgUrl = null; }
+        }
+
+        if (imgUrl) {
+          const msgRef = push(ref(db,'messages'));
+          await set(msgRef, {
+            sender: username,
+            imageURL: imgUrl,
+            ts: Date.now(),
+            time: time12(Date.now()),
+            delivered: false,
+            seenBy: { [username]: true }
+          });
+          console.log('Image sent via Imgur:', imgUrl);
+          e.target.value = '';
+          return;
+        }
+      } catch (outerErr) {
+        console.warn('Imgur flow error:', outerErr);
+      }
+
+      // FALLBACK: store base64 in DB (works but increases DB size)
+      try {
+        console.log('Falling back to base64 in DB...');
+        const dataUrl = await fileToDataURL(file); // data:image/..;base64,...
         const msgRef = push(ref(db,'messages'));
         await set(msgRef, {
           sender: username,
-          imageURL: url,
+          imageData: dataUrl,
           ts: Date.now(),
           time: time12(Date.now()),
           delivered: false,
           seenBy: { [username]: true }
         });
-      } catch (err) {
-        console.error('Image upload error', err);
-        alert('Image upload failed. Try again.');
+        console.log('Fallback base64 image sent.');
+      } catch (fallbackErr) {
+        console.error('Fallback failed:', fallbackErr);
+        alert('Image upload failed (Imgur + fallback). See console for details.');
       } finally {
         e.target.value = '';
       }
     });
 
     // ---------- fullscreen viewer ----------
-    function fullscreenOpen(url){
-      fullscreenImg.src = url;
+    function fullscreenOpen(src){
+      fullscreenImg.src = src;
       imageFullscreen.style.display = 'flex';
     }
     closeFullscreen.addEventListener('click', ()=> {
@@ -374,13 +436,12 @@
     });
 
     // ---------- clear & emergency ----------
-    clearBtn.addEventListener('click', ()=>{
+    clearBtn.addEventListener('click', ()=> {
       localStorage.setItem('clearedAt', Date.now());
       chatBox.innerHTML = '';
     });
 
-    emergencyBtn.addEventListener('click', ()=>{
-      // detach and hide chat so it doesn't reappear from listeners
+    emergencyBtn.addEventListener('click', ()=> {
       detachChatListeners();
       chatBox.innerHTML = '';
       chatContainer.style.display = 'none';
@@ -388,10 +449,10 @@
       calcValue = ''; calcDisplay.textContent = '';
     });
 
-    // keep page title
+    // make sure page title
     document.title = 'Calculatorr';
 
-    // ---------- END ----------
+    // End of script
   </script>
 </body>
 </html>

@@ -35,7 +35,6 @@
     #imageFullscreen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);align-items:center;justify-content:center;z-index:1000;flex-direction:column}
     #imageFullscreen img{max-width:90%;max-height:85%;border-radius:12px;box-shadow:0 0 20px rgba(255,255,255,0.3)}
     #closeFullscreen{margin-top:20px;padding:10px 18px;border:none;border-radius:8px;background:#d32f2f;color:#fff;font-size:16px;cursor:pointer}
-    @media(max-width:400px){#chatContainer{width:94vw;height:86vh}#calculator{width:94vw}}
   </style>
 </head>
 <body>
@@ -63,15 +62,14 @@
     </div>
   </div>
 
-  <!-- fullscreen image viewer -->
   <div id="imageFullscreen">
-    <img id="fullscreenImg" src="" alt="Full Image">
+    <img id="fullscreenImg" src="">
     <button id="closeFullscreen">Exit Fullscreen</button>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, push, onValue, set, onDisconnect, serverTimestamp, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+    import { getDatabase, ref, push, set, onValue, onDisconnect, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-storage.js";
 
     const firebaseConfig = {
@@ -79,7 +77,7 @@
       authDomain: "chat-ab2b7.firebaseapp.com",
       databaseURL: "https://chat-ab2b7-default-rtdb.firebaseio.com/",
       projectId: "chat-ab2b7",
-      storageBucket: "chat-ab2b7.appspot.com",
+      storageBucket: "chat-ab2b7.appspot.com", // ✅ Fixed
       messagingSenderId: "978470856109",
       appId: "1:978470856109:web:b8e64269b09ffd5225ed24"
     };
@@ -88,115 +86,127 @@
     const db = getDatabase(app);
     const storage = getStorage(app);
 
-    const calculator=document.getElementById('calculator');
-    const calcDisplay=document.getElementById('calc-display');
-    const buttons=calculator.querySelectorAll('.btn');
-    const equalBtn=document.getElementById('equal');
-    const clearCalc=document.getElementById('clearCalc');
-    const chatContainer=document.getElementById('chatContainer');
-    const chatBox=document.getElementById('chatBox');
-    const onlineBox=document.getElementById('onlineBox');
-    const lastSeenDiv=document.getElementById('lastSeen');
-    const typingDiv=document.getElementById('typing');
-    const messageInput=document.getElementById('messageInput');
-    const sendBtn=document.getElementById('sendBtn');
-    const clearBtn=document.getElementById('clearBtn');
-    const emergencyBtn=document.getElementById('emergencyBtn');
-    const attachBtn=document.getElementById('attachBtn');
-    const fullscreen=document.getElementById('imageFullscreen');
-    const fullscreenImg=document.getElementById('fullscreenImg');
-    const closeFullscreen=document.getElementById('closeFullscreen');
+    const calcDisplay = document.getElementById('calc-display');
+    const calculator = document.getElementById('calculator');
+    const chatContainer = document.getElementById('chatContainer');
+    const chatBox = document.getElementById('chatBox');
+    const equalBtn = document.getElementById('equal');
+    const buttons = document.querySelectorAll('.btn');
+    const clearCalc = document.getElementById('clearCalc');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const attachBtn = document.getElementById('attachBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const emergencyBtn = document.getElementById('emergencyBtn');
+    const fullscreen = document.getElementById('imageFullscreen');
+    const fullscreenImg = document.getElementById('fullscreenImg');
+    const closeFullscreen = document.getElementById('closeFullscreen');
+    const onlineBox = document.getElementById('onlineBox');
+    const lastSeenDiv = document.getElementById('lastSeen');
+    const typingDiv = document.getElementById('typing');
 
-    const fileInput=document.createElement('input');
-    fileInput.type='file';
-    fileInput.accept='image/*';
-    fileInput.style.display='none';
-    document.body.appendChild(fileInput);
+    const SECRET = "0304";
+    let calcValue = "";
 
-    attachBtn.addEventListener('click',()=>fileInput.click());
-    closeFullscreen.addEventListener('click',()=>{fullscreen.style.display='none';fullscreenImg.src='';});
+    let username = localStorage.getItem("username");
+    if (!username) {
+      username = prompt("Enter your name:") || "User" + Math.floor(Math.random() * 999);
+      localStorage.setItem("username", username);
+    }
 
-    const SECRET='0304'; 
-    let calcValue='';
-    let username=localStorage.getItem('username');
-    if(!username){username=prompt('Enter your name:')||('User'+Math.floor(Math.random()*999));localStorage.setItem('username',username);}
-
-    function time12(ts){
-      const d=new Date(ts);let h=d.getHours();
-      const m=d.getMinutes().toString().padStart(2,'0');
-      const ampm=h>=12?'PM':'AM';h=h%12||12;
+    function formatTime(ts) {
+      const d = new Date(ts);
+      let h = d.getHours();
+      const m = d.getMinutes().toString().padStart(2, "0");
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12 || 12;
       return `${h}:${m} ${ampm}`;
     }
 
-    buttons.forEach(btn=>{
-      btn.addEventListener('click',()=>{
-        const v=btn.textContent;
-        if(v==='C'){calcValue='';calcDisplay.textContent='';return;}
-        if(v==='='){
-          if(calcValue===SECRET){
-            calculator.style.display='none';
-            chatContainer.style.display='flex';
-            attachChatListeners();
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const v = btn.textContent;
+        if (v === "C") { calcValue = ""; calcDisplay.textContent = ""; return; }
+        if (v === "=") {
+          if (calcValue === SECRET) {
+            calculator.style.display = "none";
+            chatContainer.style.display = "flex";
+            attachChat();
             return;
           }
-          try{calcValue=String(eval(calcValue));calcDisplay.textContent=calcValue;}
-          catch{calcDisplay.textContent='Error';calcValue='';}
+          try { calcValue = String(eval(calcValue)); calcDisplay.textContent = calcValue; }
+          catch { calcDisplay.textContent = "Error"; calcValue = ""; }
           return;
         }
-        calcValue+=v;calcDisplay.textContent=calcValue;
+        calcValue += v;
+        calcDisplay.textContent = calcValue;
       });
     });
 
-    clearCalc.addEventListener('click',()=>{calcValue='';calcDisplay.textContent='';});
+    clearCalc.addEventListener("click", () => { calcValue = ""; calcDisplay.textContent = ""; });
 
-    const presenceRef=ref(db,'presence/'+username);
-    set(presenceRef,{online:true,lastActive:serverTimestamp()});
-    onDisconnect(presenceRef).set({online:false,lastActive:serverTimestamp()});
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.style.display = "none";
+    document.body.appendChild(fileInput);
+    attachBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", uploadImage);
 
-    let messagesListener=null, typingListener=null, presenceListener=null;
+    closeFullscreen.addEventListener("click", () => fullscreen.style.display = "none");
 
-    function attachChatListeners(){
-      if(messagesListener) return;
+    async function uploadImage(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const fileRef = sRef(storage, "chatImages/" + Date.now() + "_" + file.name);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+      const msgRef = push(ref(db, "messages"));
+      set(msgRef, { sender: username, imageURL: url, ts: Date.now(), time: formatTime(Date.now()) });
+      e.target.value = "";
+    }
 
-      presenceListener = onValue(ref(db,'presence'),snap=>{
-        const data=snap.val()||{};
-        const others=Object.keys(data).filter(k=>k!==username);
-        const onlineNames=others.filter(n=>data[n]&&data[n].online);
-        if(onlineNames.length){
-          onlineBox.textContent='🟢 Online: '+onlineNames.join(', ');
-          lastSeenDiv.textContent='';
-        } else {
-          let lastUser=null,lastTime=0;
-          for(const u of others){
-            if(data[u]?.lastActive>lastTime){lastUser=u;lastTime=data[u].lastActive;}
+    function attachChat() {
+      onValue(ref(db, "messages"), snap => {
+        const data = snap.val() || {};
+        chatBox.innerHTML = "";
+        Object.values(data).sort((a,b)=>a.ts-b.ts).forEach(m => {
+          const div = document.createElement("div");
+          div.className = "message" + (m.sender === username ? " self" : "");
+          if (m.imageURL) {
+            div.innerHTML = `<strong>${m.sender}:</strong><br><img src="${m.imageURL}" class="chat-img"><div class="meta">${m.time}</div>`;
+            div.querySelector("img").addEventListener("click", () => {
+              fullscreenImg.src = m.imageURL;
+              fullscreen.style.display = "flex";
+            });
+          } else {
+            div.innerHTML = `<strong>${m.sender}:</strong> ${m.text || ""}<div class="meta">${m.time}</div>`;
           }
-          if(lastUser) lastSeenDiv.textContent='Last seen ('+lastUser+'): '+time12(lastTime);
-          else lastSeenDiv.textContent='';
-          onlineBox.textContent='No one online';
-        }
+          chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
       });
+    }
 
-      typingListener = onValue(ref(db,'typing'),snap=>{
-        const t=snap.val()||{};
-        const othersTyping=Object.keys(t).filter(u=>u!==username&&t[u]);
-        typingDiv.textContent=othersTyping.length?`${othersTyping.join(', ')} is typing...`:'';
-      });
+    sendBtn.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+    clearBtn.addEventListener("click", () => chatBox.innerHTML = "");
+    emergencyBtn.addEventListener("click", () => {
+      chatContainer.style.display = "none";
+      calculator.style.display = "grid";
+      calcValue = ""; calcDisplay.textContent = "";
+    });
 
-      messagesListener = onValue(ref(db,'messages'),snap=>{
-        const data=snap.val()||{};
-        chatBox.innerHTML='';
-        const keys=Object.keys(data).sort((a,b)=>(data[a].ts||0)-(data[b].ts||0));
-        for(const k of keys){
-          const m=data[k];
-          const el=document.createElement('div');
-          el.className='message'+(m.sender===username?' self':'');
-          let ticks='';
-          if(m.sender===username){
-            const seenCount=m.seenBy?Object.keys(m.seenBy).filter(u=>u!==username).length:0;
-            if(seenCount>0)ticks='💙';else if(m.delivered)ticks='✓✓';else ticks='✓';
-          }
-          if(m.imageURL){
-            el.innerHTML=`<div><strong>${m.sender}:</strong><br><img src="${m.imageURL}" class="chat-img"><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div></div>`;
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text) return;
+      const msgRef = push(ref(db, "messages"));
+      set(msgRef, { sender: username, text, ts: Date.now(), time: formatTime(Date.now()) });
+      messageInput.value = "";
+    }
+  </script>
+</body>
+</html>mg src="${m.imageURL}" class="chat-img"><div class="meta">${m.time||''}<span class="ticks">${ticks}</span></div></div>`;
             const img=el.querySelector('img');
             img.addEventListener('click',()=>{
               fullscreenImg.src=m.imageURL;

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Calculatorr</title>
   <style>
-    /* UI kept identical to your working design */
+    /* UI unchanged */
     *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
     body{background:#f4f4f4;display:flex;align-items:center;justify-content:center;min-height:100vh}
     #calculator{width:320px;padding:18px;background:#000;border-radius:16px;display:grid;grid-template-columns:repeat(4,1fr);grid-gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.3)}
@@ -33,7 +33,6 @@
     #attachBtn{background:#555;color:#fff;border:none;border-radius:8px;padding:9px;cursor:pointer}
     img.chat-img{max-width:200px;border-radius:8px;margin-top:4px;cursor:pointer;transition:transform .15s}
     img.chat-img:hover{transform:scale(1.03)}
-    /* fullscreen viewer */
     #imageFullscreen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.9);align-items:center;justify-content:center;z-index:1000;flex-direction:column}
     #imageFullscreen img{max-width:90%;max-height:85%;border-radius:12px;box-shadow:0 0 20px rgba(255,255,255,0.3)}
     #closeFullscreen{margin-top:20px;padding:10px 18px;border:none;border-radius:8px;background:#d32f2f;color:#fff;font-size:16px;cursor:pointer}
@@ -75,25 +74,22 @@
 
   <script type="module">
     /**************************************************************************
-     * Final single-file app:
-     * - Calculator unlock (0304 =)
-     * - Chat with presence, typing, last seen, message ticks
-     * - Image upload -> Imgur (retry) -> fallback base64 into DB
-     * - Fullscreen image preview with Exit button
-     * - Anonymous Firebase Auth (enable in Console)
-     *
-     * Replace IMGUR_CLIENT_ID with your Imgur client id for reliability.
+     * Single-file app with:
+     * - presence fixed (accurate online / last seen)
+     * - back button -> calculator
+     * - minimize/tab hidden -> calculator + require retype
+     * - all prior features unchanged
      **************************************************************************/
 
     // ---------- CONFIG ----------
-    const IMGUR_CLIENT_ID = '546f1b2c3d4e5f6'; // temporary example — replace with your own from https://api.imgur.com/oauth2/addclient
+    const IMGUR_CLIENT_ID = '546f1b2c3d4e5f6'; // replace with your Imgur client id for stability
 
     // Firebase imports (modular)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
     import { getDatabase, ref, push, onValue, set, update, onDisconnect, serverTimestamp, off } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-    // Your firebase config (unchanged)
+    // Firebase config (kept)
     const firebaseConfig = {
       apiKey: "AIzaSyBQmP2YgChWdkUyOyR5msGoog68KzNjDlk",
       authDomain: "chat-ab2b7.firebaseapp.com",
@@ -148,6 +144,7 @@
     }
     let authUser = null;
     let listenersAttached = false;
+    let heartbeatInterval = null;
 
     // ---------- helpers ----------
     function time12(ts) {
@@ -160,6 +157,14 @@
     }
     function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+    // presence ref helper
+    const presenceRefPath = () => 'presence/' + username;
+    function setPresence(isOnline) {
+      try {
+        set(ref(db, presenceRefPath()), { online: !!isOnline, lastActive: serverTimestamp() }).catch(()=>{});
+      } catch(e){ console.warn('setPresence failed', e); }
+    }
+
     // ---------- Calculator logic ----------
     buttons.forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -167,8 +172,11 @@
         if (v === 'C') { calcValue=''; calcDisplay.textContent=''; return; }
         if (v === '=') {
           if (calcValue === SECRET) {
+            // when unlocking, ensure presence online and attach listeners
+            pushHistoryForChat(); // push history so back hides chat
             calculator.style.display = 'none';
             chatContainer.style.display = 'flex';
+            setPresence(true);
             attachChatListeners();
             return;
           }
@@ -187,12 +195,16 @@
     onAuthStateChanged(auth, user => {
       if (user) {
         authUser = user;
-        // presence updated even when on calculator
-        const presRef = ref(db, 'presence/' + username);
-        set(presRef, { online: true, lastActive: serverTimestamp(), uid: user.uid }).catch(()=>{});
-        onDisconnect(presRef).set({ online: false, lastActive: serverTimestamp(), uid: user.uid });
-        // heartbeat
-        setInterval(()=> update(presRef, { lastActive: serverTimestamp() }).catch(()=>{}), 20000);
+        // set presence online while page active (we will adjust on visibilitychange)
+        setPresence(true);
+        // onDisconnect ensures correct state if browser/tab crashes or closed
+        onDisconnect(ref(db, presenceRefPath())).set({ online: false, lastActive: serverTimestamp() }).catch(()=>{});
+        // heartbeat to refresh lastActive every 20s while considered online
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        heartbeatInterval = setInterval(()=> {
+          // only update lastActive when visible; if hidden, we set offline elsewhere
+          if (!document.hidden) update(ref(db, presenceRefPath()), { lastActive: serverTimestamp() }).catch(()=>{});
+        }, 20000);
       } else {
         authUser = null;
       }
@@ -205,7 +217,8 @@
       // PRESENCE
       onValue(ref(db,'presence'), snap => {
         const data = snap.val() || {};
-        const others = Object.keys(data).filter(k => k !== username);
+        // filter out any empty or null keys (robust)
+        const others = Object.keys(data).filter(k => k && k !== username);
         if (others.length === 0) {
           onlineBox.textContent = 'Waiting for someone...';
           lastSeenDiv.textContent = '';
@@ -216,15 +229,15 @@
           onlineBox.textContent = '🟢 Online: ' + onlineNames.join(', ');
           lastSeenDiv.textContent = '';
         } else {
-          // find most recent lastActive among others
+          // pick the most recent lastActive among others
           let lastUser = null, lastTime = 0;
           for (const u of others) {
             const info = data[u];
-            if (info && info.lastActive && info.lastActive > lastTime) {
-              lastTime = info.lastActive; lastUser = u;
-            }
+            // handle serverTimestamp being an object or number
+            const t = info && info.lastActive ? Number(info.lastActive) : 0;
+            if (t > lastTime) { lastTime = t; lastUser = u; }
           }
-          if (lastUser) {
+          if (lastUser && lastTime > 0) {
             onlineBox.textContent = lastUser + ' is offline';
             lastSeenDiv.textContent = 'Last seen: ' + time12(lastTime);
           } else {
@@ -245,7 +258,6 @@
       onValue(ref(db,'messages'), snap => {
         const data = snap.val() || {};
         chatBox.innerHTML = '';
-        // respect local clear time
         const clearedAt = Number(localStorage.getItem('clearedAt') || 0);
         const list = Object.keys(data).map(k => ({ id: k, ...data[k] })).sort((a,b)=> (a.ts||0)-(b.ts||0));
         for (const m of list) {
@@ -260,7 +272,6 @@
             else if (m.delivered) ticks = '✓✓';
             else ticks = '✓';
           }
-          // show imageURL or fallback imageData
           if (m.imageURL || m.imageData) {
             const src = m.imageURL || m.imageData;
             el.innerHTML = `<div><strong>${escapeHtml(m.sender)}:</strong><br><img src="${escapeHtml(src)}" class="chat-img"><div class="meta">${escapeHtml(m.time||'')} &nbsp;<span class="ticks">${ticks}</span></div></div>`;
@@ -269,7 +280,6 @@
           }
           chatBox.appendChild(el);
 
-          // attach preview handler
           if (m.imageURL || m.imageData) {
             const img = el.querySelector('img');
             if (img) img.addEventListener('click', ()=> fullscreenOpen(m.imageURL || m.imageData));
@@ -359,7 +369,6 @@
     fileInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      // optional size warning
       const maxBytes = 4 * 1024 * 1024; // 4MB
       if (file.size > maxBytes) {
         if (!confirm('Image is large (' + Math.round(file.size/1024) + ' KB). Upload may be slow. Continue?')) {
@@ -371,13 +380,8 @@
       console.log('Uploading image (Imgur -> fallback if needed)...', file.name, file.size);
       let imgUrl = null;
       try {
-        // try once, if fails retry once
         try { imgUrl = await tryImgurUploadOnce(file); }
-        catch (err1) {
-          console.warn('Imgur first attempt failed:', err1);
-          try { imgUrl = await tryImgurUploadOnce(file); }
-          catch (err2) { console.warn('Imgur second attempt failed:', err2); imgUrl = null; }
-        }
+        catch (err1) { console.warn('Imgur first attempt failed:', err1); try { imgUrl = await tryImgurUploadOnce(file); } catch (err2) { console.warn('Imgur second attempt failed:', err2); imgUrl = null; } }
 
         if (imgUrl) {
           const msgRef = push(ref(db,'messages'));
@@ -397,10 +401,9 @@
         console.warn('Imgur flow error:', outerErr);
       }
 
-      // FALLBACK: store base64 in DB (works but increases DB size)
+      // FALLBACK: store base64 in DB
       try {
-        console.log('Falling back to base64 in DB...');
-        const dataUrl = await fileToDataURL(file); // data:image/..;base64,...
+        const dataUrl = await fileToDataURL(file);
         const msgRef = push(ref(db,'messages'));
         await set(msgRef, {
           sender: username,
@@ -447,12 +450,54 @@
       chatContainer.style.display = 'none';
       calculator.style.display = 'grid';
       calcValue = ''; calcDisplay.textContent = '';
+      // set presence offline because user "hid" chat intentionally
+      setPresence(false);
+      // push a history state to avoid immediate back reopening
+      history.pushState({calculator:true}, '');
     });
 
-    // make sure page title
-    document.title = 'Calculatorr';
+    // ---------- history / back button handling ----------
+    function pushHistoryForChat(){
+      // push a state so pressing Back will pop it and we'll hide chat
+      try { history.pushState({chat:true}, '', ''); } catch(e) {}
+    }
+    window.addEventListener('popstate', (e) => {
+      // if chat is visible, hide it and show calculator (require retype)
+      if (chatContainer.style.display === 'flex') {
+        detachChatListeners();
+        chatContainer.style.display = 'none';
+        calculator.style.display = 'grid';
+        calcValue = ''; calcDisplay.textContent = '';
+        // set presence offline because user moved away
+        setPresence(false);
+      }
+    });
 
-    // End of script
+    // ---------- visibility change (minimize/tab switch) ----------
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // hide chat and mark offline
+        if (chatContainer.style.display === 'flex') {
+          detachChatListeners();
+          chatContainer.style.display = 'none';
+          calculator.style.display = 'grid';
+          calcValue = ''; calcDisplay.textContent = '';
+        }
+        setPresence(false);
+      } else {
+        // page became visible — keep calculator shown and require secret to reopen
+        setPresence(true);
+        // do NOT auto-open chat; user must re-enter secret
+      }
+    });
+
+    // ensure presence false if user closes the tab (onbeforeunload won't always run but onDisconnect is set)
+    window.addEventListener('beforeunload', ()=> {
+      try { set(ref(db, presenceRefPath()), { online: false, lastActive: Date.now() }); } catch(e){ }
+    });
+
+    // title
+    document.title = 'Calculatorr';
   </script>
 </body>
 </html>
